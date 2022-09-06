@@ -34,6 +34,8 @@ def main():
         scaler = preprocessing.MinMaxScaler(feature_range=(0,1))
         scaler.fit(data)
         minmax_data = pd.DataFrame(scaler.transform(data))
+        minmax_data.columns= data.columns
+        minmax_data.index = data.index
         return(minmax_data)
 
     def split_data(scaled_data):

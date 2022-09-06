@@ -142,7 +142,7 @@ name_map <- jak_stat$gene_symbol[match(gsub("[.].*","",names(T21_jak)), jak_stat
 names(T21_jak) <- name_map
 names(gtex_jak) <- name_map
 
-write.csv(T21_jak, "recount3_T21.csv")
-write.csv(gtex_jak, "recount3_gtex_Blood.csv")
+write.csv(T21_jak, "./data/recount3_T21.csv")
+write.csv(gtex_jak, "./data.recount3_gtex_Blood.csv")
 
 
