@@ -21,7 +21,7 @@ dim(human_projects)
 
 head(human_projects)
 
-T21_studies <- c("SRP039348","SRP188973", "SRP188969",  "SRP186520", "SRP017123") # T21 projects
+T21_studies <- c("SRP039348","SRP187586", "SRP113668","SRP032928","SRP131623",  "SRP188973", "SRP188969", "SRP017123") # T21 projects
 
 
 
@@ -60,15 +60,22 @@ for(i  in 1:length(T21_studies)){
 # combine list object
 T21_expression = do.call(rbind,T21_data)
 
+T21_metadata = T21_metadata[-3]
 
 T21_metadata[[1]]$sra_attribute.karyotype <- ifelse(T21_metadata[[1]]$`sra_attribute.disease/status` == "Trisomy 21", "T21", "D21")
-T21_metadata[[4]]$sra_attribute.karyotype <- ifelse(T21_metadata[[4]]$sra_attribute.condition == "Trisomic", "T21", "D21")
+T21_metadata[[2]]$sra_attribute.karyotype <- ifelse(T21_metadata[[2]]$sra_attribute.condition == "Trisomic", "T21", "D21")
+T21_metadata[[3]]$sra_attribute.karyotype <- ifelse(T21_metadata[[3]]$sra_attribute.ploidy == "trisomic", "T21", "D21")
+T21_metadata[[4]]$sra_attribute.karyotype <- ifelse(T21_metadata[[4]]$sra_attribute.disease == "Trisomy 21", "T21", "D21")
+T21_metadata[[5]]$sra_attribute.karyotype <- ifelse(T21_metadata[[5]]$sra_attribute.disease == "Down syndrome", "T21", "D21")
+T21_metadata[[8]]$sra_attribute.karyotype <- ifelse(T21_metadata[[8]]$sra_attribute.genetic_variation == "Down syndrome", "T21", "D21")
 
-T21_meta = lapply(T21_metadata, function(x) x[, c( "sra_attribute.karyotype", "sra_attribute.source_name")])
+T21_meta <- lapply(T21_metadata, as.data.frame)
+T21_meta <- lapply(T21_meta, function(x) x %>% rownames_to_column())
+T21_meta = lapply(T21_meta, function(x) x[, c("rowname", "sra_attribute.karyotype")])
 T21_meta = do.call(rbind, T21_meta)
 
 
-T21_individuals <- rownames(T21_meta[T21_meta$sra_attribute.karyotype == 'T21',]) # 23 people with DS karyotype
+T21_individuals <- T21_meta[T21_meta$sra_attribute.karyotype == 'T21',"rowname"] # 23 people with DS karyotype
 
 T21_ge <- T21_expression[T21_individuals,]
 
