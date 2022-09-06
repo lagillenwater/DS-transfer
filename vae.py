@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Lambda, Input, Dense, Activation, BatchNorma
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.losses import mse, binary_crossentropy
-from tensorflow.keras.utils import plot_model
+from tensorflow.keras.utils import plot_mode`bl
 from tensorflow.keras import backend as K
 from tensorflow import keras
 from vae_utils import connect_encoder, connect_decoder, LossCallback

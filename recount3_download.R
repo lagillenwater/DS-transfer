@@ -21,7 +21,7 @@ dim(human_projects)
 
 head(human_projects)
 
-T21_studies <- c("SRP039348","SRP187586", "SRP113668","SRP032928","SRP131623",  "SRP188973", "SRP188969", "SRP017123") # T21 projects
+T21_studies <- c("SRP039348","SRP187586","SRP113668","SRP032928","SRP131623",  "SRP188973", "SRP188969", "SRP017123") # T21 projects
 
 
 
@@ -60,7 +60,6 @@ for(i  in 1:length(T21_studies)){
 # combine list object
 T21_expression = do.call(rbind,T21_data)
 
-T21_metadata = T21_metadata[-3]
 
 T21_metadata[[1]]$sra_attribute.karyotype <- ifelse(T21_metadata[[1]]$`sra_attribute.disease/status` == "Trisomy 21", "T21", "D21")
 T21_metadata[[2]]$sra_attribute.karyotype <- ifelse(T21_metadata[[2]]$sra_attribute.condition == "Trisomic", "T21", "D21")
@@ -137,6 +136,11 @@ gtex_jak <- gtex_expression[, grepl(paste(jak_stat$ensembl_gene, collapse = "|")
 gtex_jak <- gtex_jak[, 1:102]
 names(gtex_jak) <- gsub("BLOOD.", "", names(gtex_jak))
 
+
+######## assign common gene names
+name_map <- jak_stat$gene_symbol[match(gsub("[.].*","",names(T21_jak)), jak_stat$ensembl_gene)]
+names(T21_jak) <- name_map
+names(gtex_jak) <- name_map
 
 write.csv(T21_jak, "recount3_T21.csv")
 write.csv(gtex_jak, "recount3_gtex_Blood.csv")
