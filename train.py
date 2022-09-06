@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
+import numpy as np
 
 def main():
 #Define arguments for each required and optional input
@@ -10,6 +11,7 @@ def main():
         parser=argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
         ## Required inputs
+        parser.add_argument("--data-file",dest="data_file",required=True,help="full dataset")        
         parser.add_argument("--train-file",dest="train_file",required=True,help="training dataset")
         parser.add_argument("--test-file",dest="test_file",required=True,help="testing dataset")
         parser.add_argument("--output-dir",dest="output_dir",required=True,help="output directory")
@@ -37,6 +39,7 @@ def main():
         parser = define_arguments()
         args = parser.parse_args()
 
+        data_file = args.train_file
         train_file = args.train_file
         test_file = args.test_file
         latent_dim = args.latent_dim
@@ -53,13 +56,14 @@ def main():
         encoder_batch_norm = args.encoder_batch_norm
         verbose = args.verbose
         output_dir = args.output_dir
-        return train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir
+        return data_file,train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir
 
     # read in the training and testing files
-    def read_input_files(train_file,test_file):
+    def read_input_files(data_file, train_file,test_file):
+        data = pd.read_csv(data_file, index_col=0)
         train = pd.read_csv(train_file, index_col = 0)
         test = pd.read_csv(test_file, index_col = 0)
-        return train,test
+        return data,train,test
 
     # find the training shape
     def get_input_dim(train):
@@ -85,9 +89,9 @@ def main():
     # wrapper function to train autoencoder
     parser = define_arguments()
 
-    train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir = generate_arguments(parser)
+    data_file,train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir = generate_arguments(parser)
 
-    train,test = read_input_files(train_file, test_file)
+    data, train,test = read_input_files(data_file,train_file, test_file)
   
     input_dim = get_input_dim(train)
   
@@ -110,6 +114,16 @@ def main():
     vae_model.train(x_train=train,x_test=test)
     history = pd.DataFrame(vae_model.vae.history.history)
     train_plot(history, output_dir)
+    vae_model.vae.evaluate(test)
+
+    decoder= vae_model.decoder_block["decoder"]
+    encoder= vae_model.encoder_block["encoder"]
+
+    decoder.save_weights(output_dir, "decoder_weights.h5")
+    encoder.save_weights(output_dir, "encoder_weights.h5")
+
+    latent = pd.DataFrame(np.array(encoder.predict(data)[2]))
+    latent.to_csv(output_dir+ "latent_data.csv")
 
     #train_plot(history, output_dir)
     
