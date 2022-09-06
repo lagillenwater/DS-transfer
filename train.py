@@ -1,6 +1,8 @@
 from vae import VAE
 import argparse
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
 
 def main():
 #Define arguments for each required and optional input
@@ -10,13 +12,14 @@ def main():
         ## Required inputs
         parser.add_argument("--train-file",dest="train_file",required=True,help="training dataset")
         parser.add_argument("--test-file",dest="test_file",required=True,help="testing dataset")
+        parser.add_argument("--output-dir",dest="output_dir",required=True,help="output directory")
         parser.add_argument("--encoder-architecture",dest="encoder_architecture",required=True,help="encoder architecture", nargs= '*', type = int, default = [])
         parser.add_argument("--decoder-architecture",dest="decoder_architecture",required=True,help="decoder architecture", nargs='*', type = int, default = [])
 
         # optional inputs
         parser.add_argument("--epochs", dest = "epochs", required=False, help="epochs", default=50, type = int)
         parser.add_argument("--latent-dim",dest="latent_dim",required=False,help="latent dimensions",default = 16, type = int)
-        parser.add_argument("--batch-size",dest="batch_size",required=False,default=16,help="batch size")
+        parser.add_argument("--batch-size",dest="batch_size",required=False,default=1000,help="batch size")
         parser.add_argument("--optimizer",dest="optimizer",required=False,default='adam',help="optimizer")
         parser.add_argument("--learning-rate",dest="learning_rate",required=False,default=0.0005,help="learning_rate", type=float)
         parser.add_argument("--epsilon",dest="epsilon_std",required=False,default=1.0,help="epsilon", type = float)
@@ -49,7 +52,8 @@ def main():
         decoder_architecture =args.decoder_architecture
         encoder_batch_norm = args.encoder_batch_norm
         verbose = args.verbose
-        return train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose
+        output_dir = args.output_dir
+        return train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir
 
     # read in the training and testing files
     def read_input_files(train_file,test_file):
@@ -62,17 +66,33 @@ def main():
         input_dim=train.shape[1]
         return input_dim
 
+
+
+    # output training plot
+    def train_plot(history,output_dir):
+        plt.figure(figsize=(10, 5))
+        plt.plot(history["loss"], label="Training data")
+        plt.plot(history["val_loss"], label="Validation data")
+        plt.ylabel("MSE + KL Divergence")
+        plt.xlabel("No. Epoch")
+        plt.title("VAE")
+        plt.legend()
+        #plt.show()
+        plt.savefig(output_dir +'training_plot.png')
+
+
+
     # wrapper function to train autoencoder
     parser = define_arguments()
 
-    train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose = generate_arguments(parser)
+    train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir = generate_arguments(parser)
 
     train,test = read_input_files(train_file, test_file)
   
     input_dim = get_input_dim(train)
   
 
-    vae = VAE(
+    vae_model = VAE(
         input_dim=input_dim,
         latent_dim=latent_dim,
         batch_size=batch_size,
@@ -86,8 +106,12 @@ def main():
         verbose=verbose,
     )
 
-    vae.compile_vae()
-    vae.train(x_train=train,x_test=test)
-    vae.vae.evaluate(test)
+    vae_model.compile_vae()
+    vae_model.train(x_train=train,x_test=test)
+    history = pd.DataFrame(vae_model.vae.history.history)
+    train_plot(history, output_dir)
+
+    #train_plot(history, output_dir)
+    
 if __name__ == '__main__':
     main()
