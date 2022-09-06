@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Lambda, Input, Dense, Activation, BatchNorma
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.losses import mse, binary_crossentropy
-from tensorflow.keras.utils import plot_mode`bl
+from tensorflow.keras.utils import plot_model
 from tensorflow.keras import backend as K
 from tensorflow import keras
 from vae_utils import connect_encoder, connect_decoder, LossCallback
@@ -18,7 +18,7 @@ class VAE:
         optimizer="adam",
         learning_rate=0.0005,
         epsilon_std=1.0,
-        beta=0,
+        beta=1.0,
         lam=0,
         loss="binary_crossentropy",
         encoder_architecture=[],
