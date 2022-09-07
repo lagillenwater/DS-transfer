@@ -56,7 +56,7 @@ def main():
         encoder_batch_norm = args.encoder_batch_norm
         verbose = args.verbose
         output_dir = args.output_dir
-        return data_file,train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir
+        return data_file,train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_archX@itecture,decoder_architecture,encoder_batch_norm,verbose,output_dir
 
     # read in the training and testing files
     def read_input_files(data_file, train_file,test_file):
@@ -75,57 +75,3 @@ def main():
     # output training plot
     def train_plot(history,output_dir):
         plt.figure(figsize=(10, 5))
-        plt.plot(history["loss"], label="Training data")
-        plt.plot(history["val_loss"], label="Validation data")
-        plt.ylabel("MSE + KL Divergence")
-        plt.xlabel("No. Epoch")
-        plt.title("VAE")
-        plt.legend()
-        #plt.show()
-        plt.savefig(output_dir +'training_plot.png')
-
-
-
-    # wrapper function to train autoencoder
-    parser = define_arguments()
-
-    data_file,train_file,test_file,latent_dim, epochs, batch_size,optimizer,learning_rate,epsilon_std,beta,lam,loss,encoder_architecture,decoder_architecture,encoder_batch_norm,verbose,output_dir = generate_arguments(parser)
-
-    data, train,test = read_input_files(data_file,train_file, test_file)
-  
-    input_dim = get_input_dim(train)
-  
-
-    vae_model = VAE(
-        input_dim=input_dim,
-        latent_dim=latent_dim,
-        batch_size=batch_size,
-        encoder_batch_norm=encoder_batch_norm,
-        epochs=epochs,
-        learning_rate=learning_rate,
-        encoder_architecture=encoder_architecture,
-        decoder_architecture=decoder_architecture,
-        beta=beta,
-        lam=lam,
-        verbose=verbose,
-    )
-
-    vae_model.compile_vae()
-    vae_model.train(x_train=train,x_test=test)
-    history = pd.DataFrame(vae_model.vae.history.history)
-    train_plot(history, output_dir)
-    vae_model.vae.evaluate(test)
-
-    decoder= vae_model.decoder_block["decoder"]
-    encoder= vae_model.encoder_block["encoder"]
-
-    decoder.save_weights(output_dir, "decoder_weights.h5")
-    encoder.save_weights(output_dir, "encoder_weights.h5")
-
-    latent = pd.DataFrame(np.array(encoder.predict(data)[2]))
-    latent.to_csv(output_dir+ "latent_data.csv")
-
-    #train_plot(history, output_dir)
-    
-if __name__ == '__main__':
-    main()
