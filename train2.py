@@ -23,7 +23,7 @@ predict22.columns = data1.columns
 predict22.index = data2.index
 
 cross12 = pd.DataFrame(decoder1.predict(latent2))
-cross12.columns = data2.columns
+cross12.columns = data1.columns
 cross12.index = data2.index
 
 cross21 = pd.DataFrame(decoder2.predict(latent1))
