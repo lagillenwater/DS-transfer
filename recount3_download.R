@@ -1,5 +1,4 @@
                                         # This is a program for downloading the preliminary data from recount3 into the directory
-
 if (!requireNamespace("BiocManager", quietly = TRUE)) { 
     install.packages("BiocManager")
 }
@@ -90,7 +89,7 @@ blood <- gtex %>% # just use blood for this first analysis
 gtex_data = list()
 gtex_metadata = list()
 
-for(i  in blood$project){
+for(i  in gtex$project){
     print(i)
   # get project info for a specific project
   proj_info <- subset(
@@ -117,7 +116,7 @@ for(i  in blood$project){
   gtex_metadata[[i]] = metadata
 }
 
-gtex_expression <- as.data.frame(gtex_data)
+gtex_expression <- do.call(rbind, gtex_data)
 gtex_meta <- as.data.frame(gtex_metadata)
 
 
