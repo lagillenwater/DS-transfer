@@ -55,8 +55,17 @@ createMetadata <- function(projects) {
     
 metadata <- createMetadata(projects)
 
+## filterMetadata is a function for filtering the list of metadata tables by keywords of interest
+## It takes as inputs the list of metadata tables and a vector of character keywords
+filterMetadata <- function(metadata,keywords) {
+    keys <- paste(keywords, collapse = "|")
+    results <- lapply(metadata, function(x) x[, grep(keys, names(x))])
+    return(results)
+}
+keywords<- c("source", "tissue", "sample", "karyotype", "disease", "genetic", "cell", "submission", "comor")
+tissue_info <- filterMetadata(metadata,keywords)
+
     ## metadata = metadata[,grep("tissue|source", names(metadata))] 
-  
 ##   T21_metadata[[i]] = metadata
 ## }
 
