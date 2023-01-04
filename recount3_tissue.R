@@ -13,6 +13,7 @@ BiocManager::install("recount")
 library(recount3) # load the recount3 library
 library(recount)
 library(tidyverse)
+library(plyr)
 
 human_projects <- available_projects() # load all human projects
 
@@ -62,10 +63,26 @@ filterMetadata <- function(metadata,keywords) {
     results <- lapply(metadata, function(x) x[, grep(keys, names(x))])
     return(results)
 }
-keywords<- c("source", "tissue", "sample", "karyotype", "disease", "genetic", "cell", "submission", "comor")
+keywords<- c("source", "tissue", "sample", "karyotype", "disease", "genetic")
+
 tissue_info <- filterMetadata(metadata,keywords)
 
-    ## metadata = metadata[,grep("tissue|source", names(metadata))] 
+
+
+## aggregateData is a function for aggregating the metadata together
+## It takes as an input the list producted by filteredMetadata
+aggregateData <- function(filtered_metadata) {
+    dat <- lapply(filtered_metadata, as.data.frame)
+    aggregated_data <- Reduce(function(x,y) rbind.fill(x,y), dat)
+    return(aggregated_data)
+}
+
+aggregated_data <- aggregateData(tissue_info)
+
+
+
+## metadata = metadata[,grep("tissue|source", names(metadata))]
+
 ##   T21_metadata[[i]] = metadata
 ## }
 
