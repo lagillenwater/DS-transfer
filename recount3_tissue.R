@@ -76,32 +76,52 @@ createMetadataNoRSE <- function(projects) {
     metadata <- list()
     for(i in 1:length(projects)) {
         print(i/length(projects))
-        metadata[[i]] <- tryCatch({read_metadata(file_retrieve(locate_url(projects[i], type = "metadata"), verbose = F))$sra.sample_attributes}, error = function(e) {})
+        metadata[[i]] <- tryCatch({read_metadata(file_retrieve(locate_url(projects[i]), verbose = F))}, error = function(e) {})
     }
-
-
+    return(metadata)
 }
 
-
+### Need to fix to work with GTEX and tcga data
 
 createMetadataNoRSE_save <- function(projects) {
 
-    for(i in 1:length(projects)) {
-        print(i/length(projects))
+    for(i in 1:nrow(projects)) {
+        print(i/nrow(projects))
+        x = projects[i,]
        tryCatch({
-            metadata = read_metadata(file_retrieve(locate_url(projects[i], type = "metadata"), verbose = F))$sra.sample_attributes
-            write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", projects[i]), row.names = F, col.names = F)
 
-            }, error = function(e) {})
-        
-    }
+           metadata <- read_metadata(file_retrieve(locate_url(x$project, type = "metadata"), verbose = F))$sra.sample_attributes
+       },
 
+           error = function(e) {
+               
+               rse <- create_rse(x)
+               ##                   metadata <- colData(expand_sra_attributes(rse))$gtex.smtsd
+               metadata <- colData(expand_sra_attributes(rse))
 
+               if(any(grepl("gtex", names(metadata)))) {
+                   metadata <- metadata$gtex.smtsd
+               } else if(any(grepl("tcga", names(metadata)))) {
+                   metadata <- paste(metadata$tcga.gdc_cases.tissue_source_site.project, metadata$tcga.cgc_sample_sample_type)
+               } else {
+                   next
+               }
+           })
+
+        write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", x$project), row.names = F, col.names = F)
+     }
 }
 
+completed_metadata <- list.files("./recount_metadata")
+completed_metadata_studies <- gsub("_metadata.txt", "", completed_metadata)
 
-human_projects <- available_projects(organism = "human") # load all human projects
-studies <- human_projects$project
+missing <- human_projects %>% filter(!(project %in% completed_metadata_studies))
+
+createMetadataNoRSE_save(missing[1:10,])
+
+
+#human_projects <- available_projects(organism = "human") # load all human projects
+#studies <- human_projects$project
 #projects <- createProjects(human_projects, studies)
 ## It appears that the variable "sra.sample_attributes" has everything that I am looking for, at least in the DS samples.
 #keywords<- c("sra.sample_attribute")
@@ -110,7 +130,7 @@ studies <- human_projects$project
 #aggregated_data <- aggregateData(tissue_info)
 
 
-createMetadataNoRSE_save(studies)
+#createMetadataNoRSE_save(studies)
 
 
 #save(aggregated_data, file = "aggregated_data.RData")
