@@ -29,4 +29,9 @@ findVariable <- function(metadata_table, variable) {
     return(metadata)
 }
 
-## findVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames. 
+## findVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames.
+findVariableWrapper <- function(metadata, variable) {
+    variable_rows <- lapply(metadata, function(x) {findVariable(x, variable)})
+    return(variable_rows)
+}
+
