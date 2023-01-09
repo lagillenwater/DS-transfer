@@ -25,7 +25,7 @@ readMetadataWrapper <- function(metadata_dir) {
 ## findVariable is a function for finding the rows that contain the keyword of interest in the metadata tables.
 ## Takes as an input the metadata table to search and the variable of interest. 
 findVariable <- function(metadata_table, variable) {
-    metadata <- metadata_table$V1[grepl(variable, metadata_table$V1)]
+    metadata <- metadata_table$V1[grepl(variable, metadata_table$V1, ignore.case = T)]
     return(metadata)
 }
 
@@ -36,4 +36,12 @@ findVariableWrapper <- function(metadata, variable) {
     return(variable_rows)
 }
 
-## 
+
+## variableTable is a function for creating a table of counts of metadata by vector of variables
+variableTable <- function(metadata, variables) {
+    variable_counts <- lapply(variables, function(x) {sum(unlist(lapply(findVariableWrapper(test,x), length)))})
+    variable_table <- data.frame(variable = variables, count = unlist(variable_counts))
+    return(variable_table)
+}
+
+        
