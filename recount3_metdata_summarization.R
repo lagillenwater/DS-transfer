@@ -39,9 +39,27 @@ findVariableWrapper <- function(metadata, variable) {
 
 ## variableTable is a function for creating a table of counts of metadata by vector of variables
 variableTable <- function(metadata, variables) {
-    variable_counts <- lapply(variables, function(x) {sum(unlist(lapply(findVariableWrapper(test,x), length)))})
+    variable_counts <- lapply(variables, function(x) {sum(unlist(lapply(findVariableWrapper(metadata,x), length)))})
     variable_table <- data.frame(variable = variables, count = unlist(variable_counts))
     return(variable_table)
 }
 
-        
+
+tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina', 'bone', 'scalp')
+tissues <- tissues[order(tissues)]
+tissue_table <- variableTable(metadata, tissues)
+
+library(ggplot2)
+ggplot(tissue_table, aes(x = variable, y = count)) +
+    geom_bar(stat = "identity") +
+    theme(axis.text.x = element_text(angle = 60,vjust = 0.5))
+
+
+conditions <- c("alzheimer", 'autism', 'epilepsy', 'leukemia', 'immune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21')
+conditions <- conditions[order(conditions)]
+condition_table <- variableTable(metadata,conditions)
+
+
+ggplot(condition_table, aes(x = variable, y = count)) +
+    geom_bar(stat = "identity") +
+    theme(axis.text.x = element_text(angle = 60,vjust = 0.5))
