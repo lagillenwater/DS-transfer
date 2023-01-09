@@ -1,14 +1,15 @@
-                                        # This is a program for downloading the preliminary data from recount3 into the directory
-if (!requireNamespace("BiocManager", quietly = TRUE)) { 
-    install.packages("BiocManager")
-}
+                         
+##                # This is a program for downloading the preliminary data from recount3 into the directory
+## if (!requireNamespace("BiocManager", quietly = TRUE)) { 
+##     install.packages("BiocManager")
+## }
 
 
 
-BiocManager::install("LieberInstitute/recount3") # install recount3
-BiocManager::install("recount")
-install.packages(c("tidyverse", "plyr"))
-# Load required libraries
+## BiocManager::install("LieberInstitute/recount3") # install recount3
+## BiocManager::install("recount")
+## install.packages(c("tidyverse", "plyr"))
+## # Load required libraries
 library(recount3) # load the recount3 library
 library(recount)
 library(tidyverse)
@@ -71,16 +72,45 @@ aggregateData <- function(filtered_metadata) {
     return(aggregated_data)
 }
 
-human_projects <- available_projects() # load all human projects
+createMetadataNoRSE <- function(projects) {
+    metadata <- list()
+    for(i in 1:length(projects)) {
+        print(i/length(projects))
+        metadata[[i]] <- tryCatch({read_metadata(file_retrieve(locate_url(projects[i], type = "metadata"), verbose = F))$sra.sample_attributes}, error = function(e) {})
+    }
+
+
+}
+
+
+
+createMetadataNoRSE_save <- function(projects) {
+
+    for(i in 1:length(projects)) {
+        print(i/length(projects))
+       tryCatch({
+            metadata = read_metadata(file_retrieve(locate_url(projects[i], type = "metadata"), verbose = F))$sra.sample_attributes
+            write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", projects[i]), row.names = F, col.names = F)
+
+            }, error = function(e) {})
+        
+    }
+
+
+}
+
+
+human_projects <- available_projects(organism = "human") # load all human projects
 studies <- human_projects$project
-projects <- createProjects(human_projects, studies)
+#projects <- createProjects(human_projects, studies)
 ## It appears that the variable "sra.sample_attributes" has everything that I am looking for, at least in the DS samples.
-keywords<- c("sra.sample_attribute")
-metadata <- createMetadata(projects)
-tissue_info <- filterMetadata(metadata,keywords)
-aggregated_data <- aggregateData(tissue_info)
-
-save(aggregated_data, file = "aggregated_data.RData")
+#keywords<- c("sra.sample_attribute")
+#metadata <- createMetadata(projects)
+#tissue_info <- filterMetadata(metadata,keywords)
+#aggregated_data <- aggregateData(tissue_info)
 
 
+createMetadataNoRSE_save(studies)
 
+
+#save(aggregated_data, file = "aggregated_data.RData")
