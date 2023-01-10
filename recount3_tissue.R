@@ -114,13 +114,13 @@ createMetadataNoRSE_save <- function(projects) {
 
 completed_metadata <- list.files("./recount_metadata")
 completed_metadata_studies <- gsub("_metadata.txt", "", completed_metadata)
-
+human_projects <- available_projects(organism = "human") # load all human projects
 missing <- human_projects %>% filter(!(project %in% completed_metadata_studies))
 
-createMetadataNoRSE_save(missing[1:10,])
+createMetadataNoRSE_save(missing)
 
 
-#human_projects <- available_projects(organism = "human") # load all human projects
+
 #studies <- human_projects$project
 #projects <- createProjects(human_projects, studies)
 ## It appears that the variable "sra.sample_attributes" has everything that I am looking for, at least in the DS samples.
