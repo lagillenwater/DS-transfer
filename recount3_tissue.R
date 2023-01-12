@@ -87,35 +87,48 @@ createMetadataNoRSE_save <- function(projects) {
 
     for(i in 1:nrow(projects)) {
         print(i/nrow(projects))
-        x = projects[i,]
+        x <- projects[i,]
        tryCatch({
 
            metadata <- read_metadata(file_retrieve(locate_url(x$project, type = "metadata"), verbose = F))$sra.sample_attributes
+           write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", x$project), row.names = F, col.names = F)
        },
 
            error = function(e) {
-               
+           
                rse <- create_rse(x)
-               ##                   metadata <- colData(expand_sra_attributes(rse))$gtex.smtsd
                metadata <- colData(expand_sra_attributes(rse))
-
+               print(head(metadata$study))
                if(any(grepl("gtex", names(metadata)))) {
                    metadata <- metadata$gtex.smtsd
+                   write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", x$project), row.names = F, col.names = F)
                } else if(any(grepl("tcga", names(metadata)))) {
                    metadata <- paste(metadata$tcga.gdc_cases.tissue_source_site.project, metadata$tcga.cgc_sample_sample_type)
+                   write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", x$project), row.names = F, col.names = F)
+               } else if(any(grepl("sra.sample_attributes", names(metadata)))) {
+                   metadata <- metadata$sra.sample_attributes
+                   write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", x$project), row.names = F, col.names = F)
                } else {
-                   next
+                   metadata <- "no metadata"
+                   
                }
+              
            })
+        
 
-        write.table(metadata, file = sprintf("./recount_metadata/%s_metadata.txt", x$project), row.names = F, col.names = F)
+
      }
 }
 
+
+human_projects <- available_projects(organism = "human") # load all human projects
+
+
 completed_metadata <- list.files("./recount_metadata")
 completed_metadata_studies <- gsub("_metadata.txt", "", completed_metadata)
-human_projects <- available_projects(organism = "human") # load all human projects
-missing <- human_projects %>% filter(!(project %in% completed_metadata_studies))
+##missing <- human_projects %>% filter(!(project %in% completed_metadata_studies))
+missing <- human_projects %>% filter(file_source == "gtex" | file_source == "tcga")
+
 
 createMetadataNoRSE_save(missing)
 

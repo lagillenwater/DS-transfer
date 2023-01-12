@@ -29,8 +29,19 @@ findVariable <- function(metadata_table, variable) {
     return(metadata)
 }
 
+## This function finds the total number of individuals in the study, including controls. 
+findVariable_controls <- function(metadata_table, variable) {
+    if(any(grepl(variable, metadata_table$V1, ignore.case = T))) {
+        metadata  <- metadata_table$V1
+    } else {
+        metadata <- character(0)
+    }
+           
+    return(metadata)
+}
+
 ## findVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames.
-findVariableWrapper <- function(metadata, variable) {
+findVariableWrapper <- function(metadata, variable, FUN = findVariable ) {
     variable_rows <- lapply(metadata, function(x) {findVariable(x, variable)})
     variable_rows <- variable_rows[lapply(variable_rows,length)>0]
     return(variable_rows)
@@ -45,9 +56,13 @@ variableTable <- function(metadata, variables) {
 }
 
 
+metadata <- readMetadataWrapper("./recount_metadata/")
+
+
 tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina', 'bone', 'scalp')
 tissues <- tissues[order(tissues)]
 tissue_table <- variableTable(metadata, tissues)
+tissue_table
 
 library(ggplot2)
 ggplot(tissue_table, aes(x = variable, y = count)) +
