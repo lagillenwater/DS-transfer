@@ -126,8 +126,9 @@ human_projects <- available_projects(organism = "human") # load all human projec
 
 completed_metadata <- list.files("./recount_metadata")
 completed_metadata_studies <- gsub("_metadata.txt", "", completed_metadata)
-##missing <- human_projects %>% filter(!(project %in% completed_metadata_studies))
-missing <- human_projects %>% filter(file_source == "gtex" | file_source == "tcga")
+missing <- human_projects %>% filter(!(project %in% completed_metadata_studies))
+
+##missing <- human_projects %>% filter(file_source == "gtex" | file_source == "tcga")
 
 
 createMetadataNoRSE_save(missing)
