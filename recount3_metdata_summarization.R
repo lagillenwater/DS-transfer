@@ -41,27 +41,35 @@ findVariable_controls <- function(metadata_table, variable) {
 }
 
 ## findVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames.
-findVariableWrapper <- function(metadata, variable, FUN = findVariable ) {
-    variable_rows <- lapply(metadata, function(x) {findVariable(x, variable)})
+findVariableWrapper <- function(metadata, variable, FUN = findVariable() ) {
+    variable_rows <- lapply(metadata, function(x) {FUN(x, variable)})
     variable_rows <- variable_rows[lapply(variable_rows,length)>0]
     return(variable_rows)
 }
 
 
 ## variableTable is a function for creating a table of counts of metadata by vector of variables
-variableTable <- function(metadata, variables) {
-    variable_counts <- lapply(variables, function(x) {sum(unlist(lapply(findVariableWrapper(metadata,x), length)))})
+variableTable <- function(metadata, variables, FUN = findVariable()) {
+    variable_counts <- lapply(variables, function(x) {sum(unlist(lapply(findVariableWrapper(metadata,x, FUN), length)))})
     variable_table <- data.frame(variable = variables, count = unlist(variable_counts))
     return(variable_table)
 }
 
+## find study is a helper function to print information on a particular study
+findStudy <- function(srp,metadata_dir = "./recount_metadata/", metadata=metadata) {
+    metadata_files <- paste0(metadata_dir, list.files(metadata_dir))
+    print(metadata[[grep(srp,metadata_files)]])
+}
+
+
+
+
 
 metadata <- readMetadataWrapper("./recount_metadata/")
 
-
 tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina', 'bone', 'scalp')
 tissues <- tissues[order(tissues)]
-tissue_table <- variableTable(metadata, tissues)
+tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable_controls)
 tissue_table
 
 library(ggplot2)
@@ -70,9 +78,18 @@ ggplot(tissue_table, aes(x = variable, y = count)) +
     theme(axis.text.x = element_text(angle = 60,vjust = 0.5))
 
 
-conditions <- c("alzheimer", 'autism', 'epilepsy', 'leukemia', 'immune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21')
+conditions <- c("alzh", 'autism', 'epilep', 'leuk', 'autoimmune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21')
+conditions <- c("leukemia", "lin-", "aml", "mll")
+conditions <- c("autoimmune","auto-immune", "immune")
+conditions <- c("thyroidism")
+conditions <- c("diabetes", "islet")
 conditions <- conditions[order(conditions)]
-condition_table <- variableTable(metadata,conditions)
+condition_table <- variableTable(metadata,conditions, FUN = findVariable)
+condition_table_controls <- variableTable(metadata,conditions, FUN = findVariable_controls)
+condition_table
+condition_table_controls
+
+
 
 
 ggplot(condition_table, aes(x = variable, y = count)) +
