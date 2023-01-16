@@ -77,15 +77,23 @@ tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder",
 tissues <- unique(tissues[order(tissues)])
 tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable)
 tissue_table
-
-
-
-
+tissue_table <- rbind(tissue_table, c("not annotated", count - sum(tissue_table$count)))
 
 library(ggplot2)
 ggplot(tissue_table, aes(x = variable, y = count)) +
     geom_bar(stat = "identity") +
     theme(axis.text.x = element_text(angle = 60,vjust = 0.5))
+
+
+### Blood breakdwon
+
+blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast")
+blood <- blood[order(blood)]
+blood_meta <- findVariableWrapper(metadata, blood)
+blood_meta <- lapply(blood_meta, as.data.frame) # findVariable converts the data to a character vector while variableTable is looking for a data frame
+blood_meta <- lapply(blood_meta,setNames, "V1")
+blood_table <- variableTable(blood_meta, variables = blood, FUN = findVariable)
+blood_table
 
 
 conditions <- c("alzh", 'autism', 'epilep', 'leuk', 'autoimmune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21')
