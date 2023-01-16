@@ -25,10 +25,17 @@ readMetadataWrapper <- function(metadata_dir) {
 ## findVariable is a function for finding the rows that contain the keyword of interest in the metadata tables.
 ## Takes as an input the metadata table to search and the variable of interest. 
 findVariable <- function(metadata_table, variable) {
-    metadata <- metadata_table$V1[grepl(variable, metadata_table$V1, ignore.case = T)]
+    metadata <- metadata_table[grepl(variable, metadata_table$V1, ignore.case = T),]
     return(metadata)
 }
 
+
+## excludeVariable is a function for excluding metadata with a full term that differs from the partial term of interest. For example, when looking for 'blood' samples exclude 'blood vessel'
+excludeVariable <- function(metadata_table,variable) {
+    metadata <- metadata_table[!(grepl(variable, metadata_table$V1, ignore.case = T)),]
+    return(metadata)
+}
+                                 
 ## This function finds the total number of individuals in the study, including controls. 
 findVariable_controls <- function(metadata_table, variable) {
     if(any(grepl(variable, metadata_table$V1, ignore.case = T))) {
@@ -36,8 +43,14 @@ findVariable_controls <- function(metadata_table, variable) {
     } else {
         metadata <- character(0)
     }
-           
     return(metadata)
+}
+
+## containsVariables is a function that takes a vector of variables and identifies those containing similar strings. For example, "blood" and "blood vessel" should identify distinct metadata. The output of this function can feed into the "exclude variable" function.
+containsVariables <- function(variable, variables) {
+    overlapping_variables <- variables[grepl(variable, variables)]
+    overlapping_variables <- overlapping_variables[overlapping_variables != variable]
+    return(overlapping_variables)
 }
 
 ## findVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames.
@@ -47,6 +60,13 @@ findVariableWrapper <- function(metadata, variable, FUN = findVariable ) {
     return(variable_rows)
 }
 
+
+## excludeVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames.
+findVariableWrapper <- function(metadata, variable, FUN = findVariable ) {
+    variable_rows <- lapply(metadata, function(x) {FUN(metadata_table = x, variable)})
+    variable_rows <- variable_rows[lapply(variable_rows,length)>0]
+    return(variable_rows)
+}
 
 ## variableTable is a function for creating a table of counts of metadata by vector of variables
 variableTable <- function(metadata, variables, FUN = findVariable) {
