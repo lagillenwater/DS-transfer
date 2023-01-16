@@ -41,15 +41,15 @@ findVariable_controls <- function(metadata_table, variable) {
 }
 
 ## findVariableWrapper is a wrapper function for applying the findVariable over a list of metadata data frames.
-findVariableWrapper <- function(metadata, variable, FUN = findVariable() ) {
-    variable_rows <- lapply(metadata, function(x) {FUN(x, variable)})
+findVariableWrapper <- function(metadata, variable, FUN = findVariable ) {
+    variable_rows <- lapply(metadata, function(x) {FUN(metadata_table = x, variable)})
     variable_rows <- variable_rows[lapply(variable_rows,length)>0]
     return(variable_rows)
 }
 
 
 ## variableTable is a function for creating a table of counts of metadata by vector of variables
-variableTable <- function(metadata, variables, FUN = findVariable()) {
+variableTable <- function(metadata, variables, FUN = findVariable) {
     variable_counts <- lapply(variables, function(x) {sum(unlist(lapply(findVariableWrapper(metadata,x, FUN), length)))})
     variable_table <- data.frame(variable = variables, count = unlist(variable_counts))
     return(variable_table)
@@ -58,19 +58,29 @@ variableTable <- function(metadata, variables, FUN = findVariable()) {
 ## find study is a helper function to print information on a particular study
 findStudy <- function(srp,metadata_dir = "./recount_metadata/", metadata=metadata) {
     metadata_files <- paste0(metadata_dir, list.files(metadata_dir))
-    print(metadata[[grep(srp,metadata_files)]])
+    return(metadata[[grep(srp,metadata_files)]])
+}
+
+## function for counting all the metadata
+countMetadata <- function(metadata) {
+    count <- sum(unlist(lapply(metadata,nrow)))
+    return(count)
 }
 
 
 
-
-
 metadata <- readMetadataWrapper("./recount_metadata/")
+count <- countMetadata(metadata)
 
-tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina', 'bone', 'scalp')
-tissues <- tissues[order(tissues)]
-tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable_controls)
+tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina',  'scalp', 'pbmc', 'plasma', 'adipose','adrenal','blood vessel', 'bone marrow', 'brain reference', 'cervix','colon','colorectal','epithelium','esophagus','glioblastoma','head and neck', 'large intestine','melanoma','muscle','nerve','ovary','pituitary','soft tissue', 'spleen','thymus','testes','tonsil','umbilical cord')
+
+tissues <- unique(tissues[order(tissues)])
+tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable)
 tissue_table
+
+
+
+
 
 library(ggplot2)
 ggplot(tissue_table, aes(x = variable, y = count)) +
@@ -79,7 +89,7 @@ ggplot(tissue_table, aes(x = variable, y = count)) +
 
 
 conditions <- c("alzh", 'autism', 'epilep', 'leuk', 'autoimmune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21')
-conditions <- c("leukemia", "lin-", "aml", "mll")
+conditions <- c("leukemia", "lin-", "aml", "mll", "amyloid", "myloid")
 conditions <- c("autoimmune","auto-immune", "immune")
 conditions <- c("thyroidism")
 conditions <- c("diabetes", "islet")
