@@ -39,7 +39,7 @@ excludeVariable <- function(metadata_table,variable) {
 ## This function finds the total number of individuals in the study, including controls. 
 findVariable_controls <- function(metadata_table, variable) {
     if(any(grepl(variable, metadata_table$V1, ignore.case = T))) {
-        metadata  <- metadata_table$V1
+        metadata  <- metadata_table
     } else {
         metadata <- character(0)
     }
