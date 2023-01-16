@@ -121,7 +121,7 @@ ggplot(tissue_table, aes(x = variable, y = count)) +
 
 ### Blood breakdwon
 
-blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel")
+blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc")
 blood <- blood[order(blood)]
 blood_meta <- findVariableWrapper(metadata, blood)
 blood_count <- countMetadata(blood_meta)
