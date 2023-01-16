@@ -113,7 +113,7 @@ ggplot(tissue_table, aes(x = variable, y = count)) +
 
 ### Blood breakdwon
 
-blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast")
+blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel")
 blood <- blood[order(blood)]
 blood_meta <- findVariableWrapper(metadata, blood)
 blood_meta <- lapply(blood_meta, as.data.frame) # findVariable converts the data to a character vector while variableTable is looking for a data frame
