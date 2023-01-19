@@ -122,14 +122,14 @@ ggplot(tissue_table, aes(x = variable, y = count)) +
 
 ### Blood breakdwon
 
-blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc")
+blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte")
 
 ## A problem with using these terms is that there are often synonyms to these terms that prevent exact matching. Or include an overlap between the query term and the synonym. A better approach may be to use these synonyms in the search.
 ## A resource could be the node identifiers from pheknowlator. This includes data like synonyms. 
 kg <- read.csv("filtered_identifier.csv")
-
-
 pbmc <- kg[grepl("peripher", kg$Label, ignore.case = TRUE) | grepl("periph", kg$synonym, ignore.case = TRUE), ]
+
+## Upon searching for terms related to PBMC's, I was able to locate some terms with the fuzzy search. For example, the term "periph" returned 298 hits. Hit #151 was for peripheral blood mononuclear cells. However, term didn't have any synonyms. At least for this example, this wasn't helpful. Maybe worth returning to later with another resource. 
 
 blood <- blood[order(blood)]
 blood_meta <- findVariableWrapper(metadata, blood)
