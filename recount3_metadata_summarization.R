@@ -75,13 +75,13 @@ variableTable <- function(metadata, variables, FUN = findVariable) {
     variable_counts <- lapply(variables, function(x) {
         res <- findVariableWrapper(metadata,x, FUN)
         similar_variables <- containsVariables(x,variables)
-        print(length(unique(unlist(res))))
+
         if(length(similar_variables) >0) {
             print(similar_variables)
             res <- sapply(similar_variables, function(y) excludeVariableWrapper(unlist(res),y))
             res <- Reduce(intersect, res)
         }
-        print(length(unique(unlist(res))))
+
         
     })
     variable_table <- data.frame(variable = variables, count = unlist(variable_counts))
@@ -108,6 +108,7 @@ count <- countMetadata(metadata)
 
 tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina',  'scalp', 'pbmc', 'plasma', 'adipose','adrenal','blood vessel', 'bone marrow', 'brain reference', 'cervix','colon','colorectal','epithelium','esophagus','glioblastoma','head and neck', 'large intestine','melanoma','muscle','nerve','ovary','pituitary','soft tissue', 'spleen','thymus','testes','tonsil','umbilical cord')
 
+
 tissues <- unique(tissues[order(tissues)])
 tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable)
 tissue_table
@@ -122,6 +123,14 @@ ggplot(tissue_table, aes(x = variable, y = count)) +
 ### Blood breakdwon
 
 blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc")
+
+## A problem with using these terms is that there are often synonyms to these terms that prevent exact matching. Or include an overlap between the query term and the synonym. A better approach may be to use these synonyms in the search.
+## A resource could be the node identifiers from pheknowlator. This includes data like synonyms. 
+kg <- read.csv("filtered_identifier.csv")
+
+
+pbmc <- kg[grepl("peripher", kg$Label, ignore.case = TRUE) | grepl("periph", kg$synonym, ignore.case = TRUE), ]
+
 blood <- blood[order(blood)]
 blood_meta <- findVariableWrapper(metadata, blood)
 blood_count <- countMetadata(blood_meta)
