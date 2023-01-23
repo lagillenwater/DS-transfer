@@ -75,20 +75,17 @@ variableTable <- function(metadata, variables, FUN = findVariable) {
     variable_counts <- lapply(variables, function(x) {
         res <- findVariableWrapper(metadata,x, FUN)
         similar_variables <- containsVariables(x,variables)
-
+        res <- unlist(res)
         if(length(similar_variables) >0) {
-            print(similar_variables)
             res <- sapply(similar_variables, function(y) excludeVariableWrapper(unlist(res),y))
-            res <- Reduce(intersect, res)
         }
-
-        
+        return(length(res))
     })
-    variable_table <- data.frame(variable = variables, count = unlist(variable_counts))
+    variable_table <- data.frame(variable = variables, count = as.numeric(unlist(variable_counts)))
     return(variable_table)
 }
 
-## find study is a helper function to print information on a particular study
+n## find study is a helper function to print information on a particular study
 
 findStudy <- function(srp,metadata_dir = "./recount_metadata/", metadata=metadata) {
     metadata_files <- paste0(metadata_dir, list.files(metadata_dir))
@@ -101,7 +98,19 @@ countMetadata <- function(metadata) {
     return(count)
 }
 
+## variableBarPlots is a function for creating barplots based on the output of variableTable
+library(ggplot2)
+variableBarPlots <- function(variable_table) {
+    p1 <- ggplot(variable_table, aes(x = variable, y = count, fill = variable)) +
+        geom_bar(stat = "identity") +
+        theme_classic() +
+        theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1),
+              legend.position = "none")
+    return(p1)
+}
 
+
+### The analysis portion
 
 metadata <- readMetadataWrapper("./recount_metadata/")
 count <- countMetadata(metadata)
@@ -112,17 +121,16 @@ tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder",
 tissues <- unique(tissues[order(tissues)])
 tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable)
 tissue_table
+write.csv(tissue_table, file = "tissue_table.csv", row.names = F, quote = F)
 tissue_table <- rbind(tissue_table, c("not annotated", count - sum(tissue_table$count)))
+tissue_plot <- variableBarPlots(tissue_table)
 
-library(ggplot2)
-ggplot(tissue_table, aes(x = variable, y = count)) +
-    geom_bar(stat = "identity") +
-    theme(axis.text.x = element_text(angle = 60,vjust = 0.5))
+jpeg( file = "tissue_plot.jpeg")
+print(tissue_plot)
+dev.off()
 
 
 ### Blood breakdwon
-
-blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte")
 
 ## A problem with using these terms is that there are often synonyms to these terms that prevent exact matching. Or include an overlap between the query term and the synonym. A better approach may be to use these synonyms in the search.
 ## A resource could be the node identifiers from pheknowlator. This includes data like synonyms. 
@@ -131,27 +139,69 @@ pbmc <- kg[grepl("peripher", kg$Label, ignore.case = TRUE) | grepl("periph", kg$
 
 ## Upon searching for terms related to PBMC's, I was able to locate some terms with the fuzzy search. For example, the term "periph" returned 298 hits. Hit #151 was for peripheral blood mononuclear cells. However, term didn't have any synonyms. At least for this example, this wasn't helpful. Maybe worth returning to later with another resource. 
 
-blood <- blood[order(blood)]
-blood_meta <- findVariableWrapper(metadata, blood)
-blood_count <- countMetadata(blood_meta)
+blood <- c("blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte")
+blood <- unique(blood[order(blood)])
+blood_meta <- lapply(blood, function(x) findVariableWrapper(metadata, x))
+blood_meta <- unlist(blood_meta)
 blood_meta <- lapply(blood_meta, as.data.frame) # findVariable converts the data to a character vector while variableTable is looking for a data frame
 blood_meta <- lapply(blood_meta,setNames, "V1")
+blood_count <- countMetadata(blood_meta)
 blood_table <- variableTable(blood_meta, variables = blood, FUN = findVariable)
-blood_table
+blood_table <- rbind(blood_table, c("not annotated", count - sum(blood_table$count)))
+blood_plot <- variableBarPlots(blood_table)
+jpeg( file = "blood_plot.jpeg")
+print(blood_plot)
+dev.off()
+write.csv(blood_table, file = "blood_table", row.names = F, quote = F)
 
 
-conditions <- c("alzh", 'autism', 'epilep', 'leuk', 'autoimmune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21')
-conditions <- c("leukemia", "lin-", "aml", "mll", "amyloid", "myloid")
-conditions <- c("autoimmune","auto-immune", "immune")
-conditions <- c("thyroidism")
-conditions <- c("diabetes", "islet")
+conditions <- c("alzh", 'autism', 'epilep', 'leuk', 'autoimmune', 'alopecia', 'arthritis', 'celiac', 'diabet', 'sleep', 'heart', 'thyroidism', 'depression',  'obes','seizure',  'T21', 'Trisomy21', 'Down syndrome', "Down's syndrome", "patient21", "subject21","s21","TET21", "chromosome 21", "DS", "trisomic")
 conditions <- conditions[order(conditions)]
 condition_table <- variableTable(metadata,conditions, FUN = findVariable)
 condition_table_controls <- variableTable(metadata,conditions, FUN = findVariable_controls)
+
 condition_table
-condition_table_controls
+condition_plot <- variableBarPlots(condition_table)
+write.csv(condition_table, file = "condition_table", row.names = F, quote = F)
 
+jpeg( file = "condition_plot.jpeg")
+print(condition_plot)
+dev.off()
 
+T21_variables <- c('T21', 'Trisomy21', 'Down syndrome', "Down's syndrome", "patient21", "subject21","s21","TET21", "chromosome 21", "DS", "trisomic")
+T21_meta <- findVariableWrapper(metadata, T21_variables)
+T21_meta <- excludeVariableWrapper(T21_meta, "patient21")
+T21_meta <- excludeVariableWrapper(T21_meta, "subject21")
+T21_meta <- excludeVariableWrapper(T21_meta, "TET21")
+T21_meta <- excludeVariableWrapper(T21_meta, "pet21")
+T21_meta <- excludeVariableWrapper(T21_meta, "pat21")
+T21_meta <- excludeVariableWrapper(T21_meta, "07T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "20T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "17T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "27T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "11T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "05T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "03T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "10T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "16T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "08T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "T21B")
+T21_meta <- excludeVariableWrapper(T21_meta, "CT21")
+T21_meta <- excludeVariableWrapper(T21_meta, "02T21")
+T21_meta <- excludeVariableWrapper(T21_meta, "Alias;;T21")
+T21_meta <- T21_meta[-c(28:30,37,34,33,25,1:24)]
+T21_meta <- lapply(T21_meta, as.data.frame) # findVariable converts the data to a character vector while variableTable is looking for a data frame
+T21_meta <- lapply(T21_meta,setNames, "V1")
+T21_count <- countMetadata(T21_meta)
+T21_table <- variableTable(T21_meta, variables = tissues, FUN = findVariable)
+T21_table
+
+T21_table <- rbind(T21_table, c("not annotated", count - sum(T21_table$count)))
+T21_plot <- variableBarPlots(T21_table)
+jpeg( file = "T21_plot.jpeg")
+print(T21_plot)
+dev.off()
+write.csv(T21_table, file = "T21_table", row.names = F, quote = F)
 
 
 ggplot(condition_table, aes(x = variable, y = count)) +
