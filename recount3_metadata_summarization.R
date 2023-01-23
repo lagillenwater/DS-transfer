@@ -77,7 +77,11 @@ variableTable <- function(metadata, variables, FUN = findVariable) {
         similar_variables <- containsVariables(x,variables)
         res <- unlist(res)
         if(length(similar_variables) >0) {
-            res <- sapply(similar_variables, function(y) excludeVariableWrapper(unlist(res),y))
+           for( y in similar_variables){
+                tmp <- unlist(excludeVariableWrapper(res,y))
+                tmp <- unlist(tmp)
+                res <- res[!(res %in% intersect(res,tmp))]
+            }
         }
         return(length(res))
     })
@@ -115,10 +119,10 @@ variableBarPlots <- function(variable_table) {
 metadata <- readMetadataWrapper("./recount_metadata/")
 count <- countMetadata(metadata)
 
-tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina',  'scalp', 'pbmc', 'plasma', 'adipose','adrenal','blood vessel', 'bone marrow', 'brain reference', 'cervix','colon','colorectal','epithelium','esophagus','glioblastoma','head and neck', 'large intestine','melanoma','muscle','nerve','ovary','pituitary','soft tissue', 'spleen','thymus','testes','tonsil','umbilical cord')
+tissues <- c("blood", "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina',  'scalp', 'pbmc', 'plasma', 'adipose','adrenal','blood vessel', 'bone marrow', 'brain reference', 'cervix','colon','colorectal','epithelium','esophagus','glioblastoma','head and neck', 'large intestine','melanoma','muscle','nerve','ovary','pituitary','soft tissue', 'spleen','thymus','testes','tonsil','umbilical cord', "blood", "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte")
 
 
-tissues <- unique(tissues[order(tissues)])
+tissues <- unique(tolower(tissues[order(tissues)]))
 tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable)
 tissue_table
 write.csv(tissue_table, file = "tissue_table.csv", row.names = F, quote = F)
@@ -169,7 +173,9 @@ print(condition_plot)
 dev.off()
 
 T21_variables <- c('T21', 'Trisomy21', 'Down syndrome', "Down's syndrome", "patient21", "subject21","s21","TET21", "chromosome 21", "DS", "trisomic")
-T21_meta <- findVariableWrapper(metadata, T21_variables)
+T21_meta <- lapply(T21_variables, function(x) findVariableWrapper(metadata, x))
+T21_meta <- unlist(T21_meta)
+
 T21_meta <- excludeVariableWrapper(T21_meta, "patient21")
 T21_meta <- excludeVariableWrapper(T21_meta, "subject21")
 T21_meta <- excludeVariableWrapper(T21_meta, "TET21")
@@ -189,7 +195,7 @@ T21_meta <- excludeVariableWrapper(T21_meta, "T21B")
 T21_meta <- excludeVariableWrapper(T21_meta, "CT21")
 T21_meta <- excludeVariableWrapper(T21_meta, "02T21")
 T21_meta <- excludeVariableWrapper(T21_meta, "Alias;;T21")
-T21_meta <- T21_meta[-c(28:30,37,34,33,25,1:24)]
+
 T21_meta <- lapply(T21_meta, as.data.frame) # findVariable converts the data to a character vector while variableTable is looking for a data frame
 T21_meta <- lapply(T21_meta,setNames, "V1")
 T21_count <- countMetadata(T21_meta)
