@@ -1,6 +1,6 @@
 library(tidyverse)
 library(ggplot2)
-library(DESeq2)
+library(limma)
 
 
 comorbidities <- read.delim("./data/P4C_Comorbidity_020921.tsv", skip = 1)
@@ -14,8 +14,7 @@ comorbidities <- comorbidities %>%
     pivot_wider(names_from = Condition, values_from = HasCondition)
 
 
-meta <- metadata %>%
-    inner_join(comorbidities, by = "RecordID")
+
 
 load("./data/DS_transcription_profiles_wide.RData")
 
@@ -33,13 +32,35 @@ varFilter <- function(gene_expression,threshold) {
     return(filtered)
 }
 
+
+
+## organize meta
+meta <- metadata %>%    inner_join(comorbidities, by = "RecordID")
 ds <- varFilter(ds_wide, .1)
-ds <- ds %>%
-    column_to_rownames('LabID')
 
-ds <- as.data.frame(t(ds))
+meta <- meta %>% filter(LabID %in% ds$LabID) %>% column_to_rownames('LabID') 
+meta$numeric_karyotype <- ifelse(meta$Karyotype == "T21", 1, 0)
 
-# organize meta
+ds <- ds %>% filter(LabID %in% rownames(meta))  %>% arrange(match(LabID, rownames(meta)))%>% column_to_rownames('LabID') %>% t() %>% as.data.frame()
+ds <- log(ds + 1e-10)
+##ds <- cbind(ds, karyotype = meta$numeric_karyotype)
 
-ds <- DESeqDataSetFromMatrix(countData = ds,colData = ,design= ~ batch + condition)
+design <- model.matrix(~0 + Karyotype +Sex+Age_at_visit, meta)
+colnames(design)[1:2] <- c('D21', 'T21')
+contrasts <- makeContrasts(T21vsD21 = T21-D21, levels = design)
+fit <- eBayes(contrasts.fit(lmFit(ds, design), contrasts))
+results <- topTable(fit, adjust = 'fdr', number = nrow(ds) + 1)
+results <- results[!is.na(results$logFC), ]
+write.csv(results, "whole_blood_DE_results.csv")
 
+
+T21_meta <- meta %>% filter(Karyotype == "T21")
+T21_meta$Depression[is.na(T21_meta$Depression)] <- 0
+
+design <- model.matrix(~0 + Depression +Sex+Age_at_visit, T21_meta)
+T21_ds <- ds %>% select(rownames(design))
+contrasts <- makeContrasts(Depression, levels = design)
+fit <- eBayes(contrasts.fit(lmFit(T21_ds, design), contrasts))
+results <- topTable(fit, adjust = 'fdr', number = nrow(ds) + 1)
+results <- results[!is.na(results$logFC), ]
+write.csv(results, "whole_blood_DE_results.csv")

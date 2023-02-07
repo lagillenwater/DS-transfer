@@ -25,7 +25,8 @@ readMetadataWrapper <- function(metadata_dir) {
 ## findVariable is a function for finding the rows that contain the keyword of interest in the metadata tables.
 ## Takes as an input the metadata table to search and the variable of interest. 
 findVariable <- function(metadata_table, variable) {
-    metadata_vector <- metadata_table[grepl(variable, metadata_table$V1, ignore.case = TRUE),]
+    metadata_vector <- metadata_table[grepl
+    (variable, metadata_table$V1, ignore.case = TRUE),]
     return(metadata_vector)
 }
 
@@ -109,8 +110,10 @@ variableBarPlots <- function(variable_table) {
     p1 <- ggplot(variable_table, aes(x = variable, y = count)) +
         geom_bar(stat = "identity") +
         theme_classic() +
-        theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1),
-              legend.position = "none")
+        theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1, size = 12),
+             axis.text.y = element_text(size = 12),
+             legend.position = "none") +
+        xlab("")
     return(p1)
 }
 
@@ -118,6 +121,8 @@ variableBarPlots <- function(variable_table) {
 ### The analysis portion
 
 metadata <- readMetadataWrapper("./recount_metadata/")
+
+
 count <- countMetadata(metadata)
 
 tissues <- c( "brain", "breast", "fibroblast", "lymphoblast", "bladder", "colon", "heart", "liver", "muscle","prostate", "skin", "pancreas", "lung", 'testis', 'spleen', 'thyroid', 'ovary', 'esophagus', 'kidney', 'salivary', 'small intestine', 'stomach', 'uterus', 'vagina',  'scalp', 'pbmc', 'plasma', 'adipose','adrenal','blood vessel', 'bone marrow', 'brain reference', 'cervix','colon','colorectal','epithelium','esophagus','glioblastoma','head and neck', 'large intestine','melanoma','muscle','nerve','ovary','pituitary','soft tissue', 'spleen','thymus','testes','tonsil','umbilical cord',  "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte")
@@ -128,8 +133,10 @@ tissue_table <- variableTable(metadata, variables = tissues, FUN = findVariable)
 tissue_table
 
 tissue_table <- tissue_table[tissue_table$variable %in% tissues,]
+tissue_table[33, "count"] = tissue_table[33, "count"] + tissue_table[32, "count"]
+tissue_table <- tissue_table[-32,]
 write.csv(tissue_table, file = "tissue_table.csv", row.names = F, quote = F)
-tissue_table <- rbind(tissue_table, c("not annotated", count - sum(tissue_table$count)))
+#tissue_table <- rbind(tissue_table, c("not annotated", count - sum(tissue_table$count)))
 tissue_plot <- variableBarPlots(tissue_table)
 
 jpeg( file = "tissue_plot.jpeg")
@@ -146,7 +153,7 @@ pbmc <- kg[grepl("peripher", kg$Label, ignore.case = TRUE) | grepl("periph", kg$
 
 ## Upon searching for terms related to PBMC's, I was able to locate some terms with the fuzzy search. For example, the term "periph" returned 298 hits. Hit #151 was for peripheral blood mononuclear cells. However, term didn't have any synonyms. At least for this example, this wasn't helpful. Maybe worth returning to later with another resource. 
 
-blood <- c( "whole blood", "PBMC","fibroblast", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte", "plasma")
+blood <- c( "whole blood", "lymphoblast", "blood vessel", "ipsc", "peripheral blood mononuclear cell", "leukocyte", "monocyte", "lymphocyte", "monocyte", "plasma")
 blood <- unique(blood[order(blood)])
 blood_meta <- lapply(blood, function(x) findVariableWrapper(metadata, x))
 blood_meta <- unlist(blood_meta)
@@ -172,10 +179,11 @@ condition_table <- variableTable(metadata,conditions, FUN = findVariable)
 
 
 whole_meta <- findVariableWrapper(metadata, "whole blood")
-whole_meta <- unlist(whole_meta)
 whole_meta <- lapply(whole_meta, as.data.frame)
 whole_meta <- lapply(whole_meta, setNames, "V1")
-condition_table_whole <- variableTable(whole_meta, conditions, FUN=findVariable)
+
+
+condition_table_whole <- variableTable(whole_meta, variables = conditions, FUN=findVariable)
 
 
 
@@ -184,8 +192,9 @@ condition_table_whole <- variableTable(whole_meta, conditions, FUN=findVariable)
 
                                         #condition_table_controls <- variableTable(metadata,conditions, FUN = findVariable_controls)
 
+
 condition_table
-condition_dtable[2, "variable"] <- "Alzheimer's"
+condition_table[2, "variable"] <- "Alzheimer's"
 condition_table[condition_table$variable == "trisomy 21", "count"] = 133
 condition_table[c(9,13,14,15,16), "variable"] <- c("Diabetes", "Epilepsy", "Heart Defects",  "Leukemia", "Obesity")
 
