@@ -1,2 +1,2 @@
 * DS-transfer
-DS-transer is a repository for translating gene expression profiles from individuals with typical, disomic karytoypes for chromosome 21 (D21) to individuals with trisomic karyotypes for chromosome 21 (T21). The process is generative and captures the complex gene-gene interactions brought on by the systemic over-expression of CHR21 genes. 
+DS-transer is a repository for translating gene expression profiles from individuals with typical, disomic karytoypes for chromosome 21 (D21) to individuals with trisomic karyotypes for chromosome 21 (T21). The process is generative and captures the complex gene-gene interactions brought on by the systemic over-expression of CHR21 gens. 
