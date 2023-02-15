@@ -1,147 +1,60 @@
-                                        # This is a program for downloading the preliminary data from recount3 into the directory
+## This is an Rscript to be run as a command line program for downloading and processing specific gene expression files 
+
+## Checking for libraries.
+## TODO rewrite to work run in packages format. 
+
 if (!requireNamespace("BiocManager", quietly = TRUE)) { 
     install.packages("BiocManager")
 }
 
-## Check that you have a valid Bioconductor installation
-BiocManager::valid()
+if (!requireNamespace("optparse", quietly = TRUE)) { 
+    install.packages("optparse")
+}
+if (!requireNamespace("recount3", quietly = TRUE)) { 
+    BiocManager::install("LieberInstitute/recount3") # install recount3
+    BiocManager::install("recount")
 
-BiocManager::install("LieberInstitute/recount3") # install recount3
-BiocManager::install("recount")
+}
+if (!requireNamespace("recount", quietly = TRUE)) { 
+    BiocManager::install("LieberInstitute/recount3") # install recount3
+    BiocManager::install("recount")
 
-# Load required libraries
-library(recount3) # load the recount3 library
+}
+if (!requireNamespace("tidyverse", quietly = TRUE)) { 
+    install.packages("tidyverse")
+}
+
+## Load required libraries 
+
+library("optparse")
+library(recount3) 
 library(recount)
 library(tidyverse)
 
-human_projects <- available_projects() # load all human projects
+option_list = list(
+    make_option(c("-f", "--file_source"), type="character", default=NULL, 
+              help="transcriptomic database ('sra', 'gtex', 'tcga')", metavar="character"),
+    make_option(c("-o", "--out"), type="character", default="out.txt", 
+                help="output file name [default= %default]", metavar="character"),
+    make_option(c("-p", "--project"), type="character", default=NULL, 
+                help="project number or title", metavar="character"),
+    make_option(c("-s", "--species"), type="character", default='human', 
+                help="'human' or 'mouse' [default='human']", metavar="character")    
+   
+); 
+ 
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser);
 
-dim(human_projects)
+## TODO ### Check for NULLs
 
-head(human_projects)
+human_projects <- available_projects(organism = opt$species) # load all human projects
 
-T21_studies <- c("SRP039348","SRP187586","SRP113668","SRP032928","SRP131623",  "SRP188973", "SRP188969", "SRP017123") # T21 projects
+human_source <- human_projects %>% filter(file_source == opt$file_source)
 
+## TODO Add fuzzy match
+project <- human_source %>% filter(project == opt$project)
 
+print(project)
 
-
-# create list for storing counts
-T21_data = list()
-T21_metadata = list()
-
-for(i  in 1:length(T21_studies)){
-    print(i)
-  # get project info for a specific project
-  proj_info <- subset(
-    human_projects,
-    project == T21_studies[i] #& project_type == "data_sources"
-    )
-  # select 1 project
-  rse_gene = create_rse(proj_info)
-  assay(rse_gene, "counts") = transform_counts(rse_gene)
-  assays(rse_gene)$RPKM = recount::getRPKM(rse_gene)
-  metadata =  tryCatch({  
-  # metadata 
-      expand_sra_attributes(rse_gene)
-  }, error = function(e) {})
-  if(is.null(metadata)) {
-        print(paste("skipping", i))
-        next
-  }
-  metadata = colData(metadata)
-  metadata = metadata[,grep("sra_attribute", names(metadata))] 
-  # store expression data
-  T21_data[[i]] =as.data.frame(t(assays(rse_gene)$RPKM))
-  # store the metadata
-  T21_metadata[[i]] = metadata
-}
-
-# combine list object
-T21_expression = do.call(rbind,T21_data)
-
-
-T21_metadata[[1]]$sra_attribute.karyotype <- ifelse(T21_metadata[[1]]$`sra_attribute.disease/status` == "Trisomy 21", "T21", "D21")
-T21_metadata[[2]]$sra_attribute.karyotype <- ifelse(T21_metadata[[2]]$sra_attribute.condition == "Trisomic", "T21", "D21")
-T21_metadata[[3]]$sra_attribute.karyotype <- ifelse(T21_metadata[[3]]$sra_attribute.ploidy == "trisomic", "T21", "D21")
-T21_metadata[[4]]$sra_attribute.karyotype <- ifelse(T21_metadata[[4]]$sra_attribute.disease == "Trisomy 21", "T21", "D21")
-T21_metadata[[5]]$sra_attribute.karyotype <- ifelse(T21_metadata[[5]]$sra_attribute.disease == "Down syndrome", "T21", "D21")
-T21_metadata[[8]]$sra_attribute.karyotype <- ifelse(T21_metadata[[8]]$sra_attribute.genetic_variation == "Down syndrome", "T21", "D21")
-
-T21_meta <- lapply(T21_metadata, as.data.frame)
-T21_meta <- lapply(T21_meta, function(x) x %>% rownames_to_column())
-T21_meta = lapply(T21_meta, function(x) x[, c("rowname", "sra_attribute.karyotype")])
-T21_meta = do.call(rbind, T21_meta)
-
-
-T21_individuals <- T21_meta[T21_meta$sra_attribute.karyotype == 'T21',"rowname"] # 23 people with DS karyotype
-
-T21_ge <- T21_expression[T21_individuals,]
-
-
-### Potentially follow up here with GTEX samples, the "healthy" ones. 
-gtex <- human_projects %>%
-    filter(file_source == 'gtex')
-
-blood <- gtex %>% # just use blood for this first analysis
-    filter(project == "BLOOD")
-
-# create list for storing counts
-gtex_data = list()
-gtex_metadata = list()
-
-for(i  in gtex$project){
-    print(i)
-  # get project info for a specific project
-  proj_info <- subset(
-    human_projects,
-    project == i #& project_type == "data_sources"
-    )
-  # select 1 project
-  rse_gene = create_rse(proj_info)
-  assay(rse_gene, "counts") = transform_counts(rse_gene)
-  assays(rse_gene)$RPKM = recount::getRPKM(rse_gene)
-  metadata =  tryCatch({  
-  # metadata 
-      expand_sra_attributes(rse_gene)
-  }, error = function(e) {})
-  if(is.null(metadata)) {
-        print(paste("skipping", i))
-        next
-  }
-  metadata = colData(metadata)
-  #metadata = metadata[,grep("sra_attribute", names(metadata))] 
-  # store expression data
-  gtex_data[[i]] =as.data.frame(t(assays(rse_gene)$RPKM))
-  # store the metadata
-  gtex_metadata[[i]] = metadata
-}
-
-gtex_expression <- do.call(rbind, gtex_data)
-gtex_meta <- as.data.frame(gtex_metadata)
-
-
-#restricn data to JAK/STAT pathway
-library(msigdbr)
-all_gene_sets <- msigdbr(species = "Homo sapiens", category = "H")
-all_gene_sets <- as.data.frame(all_gene_sets)
-jak_stat <- all_gene_sets[all_gene_sets$gs_name == "HALLMARK_IL6_JAK_STAT3_SIGNALING",]
-
-
-T21_jak <- T21_ge[, grepl(paste(jak_stat$ensembl_gene, collapse = "|"), names(T21_ge))]
-T21_jak <- T21_jak[,1:102]
-
-
-gtex_jak <- gtex_expression[, grepl(paste(jak_stat$ensembl_gene, collapse = "|"), names(gtex_expression))]
-gtex_jak <- gtex_jak[, 1:102]
-names(gtex_jak) <- gsub("BLOOD.", "", names(gtex_jak))
-
-
-######## assign common gene names
-name_map <- jak_stat$gene_symbol[match(gsub("[.].*","",names(T21_jak)), jak_stat$ensembl_gene)]
-names(T21_jak) <- name_map
-names(gtex_jak) <- name_map
-
-write.csv(T21_jak, "./data/recount3_T21.csv")
-write.csv(gtex_jak, "./data.recount3_gtex_Blood.csv")
-
-
+## TOOD Add writing of file
