@@ -34,8 +34,8 @@ library(tidyverse)
 option_list = list(
     make_option(c("-f", "--file_source"), type="character", default=NULL, 
               help="transcriptomic database ('sra', 'gtex', 'tcga')", metavar="character"),
-    make_option(c("-o", "--out"), type="character", default="out.txt", 
-                help="output file name [default= %default]", metavar="character"),
+    make_option(c("-o", "--out_dir"), type="character", default=".", 
+                help="output directory [default= current directory]", metavar="character"),
     make_option(c("-p", "--project"), type="character", default=NULL, 
                 help="project number or title", metavar="character"),
     make_option(c("-s", "--species"), type="character", default='human', 
@@ -46,7 +46,7 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
 
-## TODO ### Check for NULLs
+## TODO ### Check arguments for NULLs
 
 human_projects <- available_projects(organism = opt$species) # load all human projects
 
@@ -55,6 +55,17 @@ human_source <- human_projects %>% filter(file_source == opt$file_source)
 ## TODO Add fuzzy match
 project <- human_source %>% filter(project == opt$project)
 
-print(project)
+rse_gene = create_rse(project)
+assay(rse_gene, "counts") = transform_counts(rse_gene)
+assays(rse_gene)$RPKM = recount::getRPKM(rse_gene)
+expression =as.data.frame(t(assays(rse_gene)$RPKM))
+metadata =  tryCatch({                               
+    expand_sra_attributes(rse_gene)
+}, error = function(e) {})
 
-## TOOD Add writing of file
+metadata = colData(metadata)
+
+## write expression and metadata
+write.csv(expression, file = paste0(opt$out_dir,project$project,"_expression.csv"))
+write.csv(metadata, file = paste0(opt$out_dir, project$project,"_metadata.csv"))
+
