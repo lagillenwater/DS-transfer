@@ -23,7 +23,7 @@ head(ds_meta)
 dim(ds_meta) # 384 subjects with DS
 
 
-load("./data/DS_transcription_profiles_wide.RData")
+load("./data/DS_transcription_profiles_wide.RData") 
 
 ds_wide <- ds_wide %>%
     distinct(LabID, .keep_all = T) # remove duplicate names
