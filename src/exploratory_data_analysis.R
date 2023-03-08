@@ -26,10 +26,9 @@ mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 genes <- names(sample_expression)[2:ncol(sample_expression)]
 genes <- gsub("[.].*","", genes)
 G_list <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
-merge(df,G_list,by.x="gene",by.y="ensembl_peptide_id")
 
 names(sample_expression) <- gsub("[.].*","", names(sample_expression))
-sample_expression_filtered <- sample_expression[, c("X", names(sample_expression)[names(sample_expression) %in% G_list$ensembl_gene_id])]
+
 
 ## Prostate pathways
 pro <- read.delim("../data/Gene Pathways/KEGG_PROSTATE_CANCER.v2023.1.Hs.tsv")
@@ -49,6 +48,12 @@ h <- unlist(strsplit(unlist(h), ","))
 
 filter_genes <- unique(c(pro,bla,h))
 filter_genes <- filter_genes[filter_genes != ""]
+
+G_list <- G_list %>%
+    filter(hgnc_symbol %in% filter_genes)
+
+sample_expression_filtered <- sample_expression %>%
+    dplyr::select(c("X", G_list$ensembl_gene_id))
 
 ## Apply variance filter to genes
 
