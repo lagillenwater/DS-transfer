@@ -31,10 +31,27 @@ merge(df,G_list,by.x="gene",by.y="ensembl_peptide_id")
 names(sample_expression) <- gsub("[.].*","", names(sample_expression))
 sample_expression_filtered <- sample_expression[, c("X", names(sample_expression)[names(sample_expression) %in% G_list$ensembl_gene_id])]
 
-    
+## Prostate pathways
+pro <- read.delim("../data/Gene Pathways/KEGG_PROSTATE_CANCER.v2023.1.Hs.tsv")
+pro <- pro[17,2]
+pro <- unlist(strsplit(unlist(pro), ","))
 
+## Bladder pathways
+bla <- read.delim("../data/Gene Pathways/KEGG_BLADDER_CANCER.v2023.1.Hs.tsv")
+bla <- bla[17,2]
+bla <- unlist(strsplit(unlist(bla), ","))
+
+
+## Housekeeping genes
+h <- read.delim("../data/Gene Pathways/HSIAO_HOUSEKEEPING_GENES.v2023.1.Hs.tsv")
+h <- h[17,2]
+h <- unlist(strsplit(unlist(h), ","))
+
+filter_genes <- unique(c(pro,bla,h))
+filter_genes <- filter_genes[filter_genes != ""]
 
 ## Apply variance filter to genes
+
 gene_vars <- sample_expression %>%
     summarise(across(where(is.numeric), var))
 
