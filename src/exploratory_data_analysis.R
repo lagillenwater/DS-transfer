@@ -18,26 +18,38 @@ sample_ids <- meta %>% filter(tcga.cgc_case_id %in% tcga_ids) %>% .$X
 sample_expression <- expr %>% filter(X %in% sample_ids)
 sample_meta <- meta %>% filter(tcga.cgc_case_id %in% tcga_ids)
 
-
-
-
-
     
-## ## Apply variance filter to genes
+## Apply variance filter to genes
+gene_vars <- sample_expression %>%
+    summarise(across(where(is.numeric), var))
 
-## gene_vars <- sample_expression %>%
-##     summarise(across(where(is.numeric), var))
+high_variance_genes <- gene_vars %>%
+    pivot_longer(cols = everything(), names_to = "gene",values_to = "variance") %>%
+    arrange(desc(variance)) %>%
+    filter(variance > 1)
 
-## high_variance_genes <- gene_vars %>%
-##     pivot_longer(cols = everything(), names_to = "gene",values_to = "variance") %>%
-##     arrange(desc(variance)) %>%
-##     top_n(10000)
-
-## sample_expression_filtered <- sample_expression %>%
-##     select(c('X', high_variance_genes$gene))
+sample_expression_filtered <- sample_expression %>%
+    dplyr::select(c('X', high_variance_genes$gene))
 
 ## log transform
-##sample_expression_filtered[,2:ncol(sample_expression_filtered)] <- log2(sample_expression_filtered[,2:ncol(sample_expression_filtered)]+1)
+sample_expression_filtered[,2:ncol(sample_expression_filtered)] <- log2(sample_expression_filtered[,2:ncol(sample_expression_filtered)]+1)
+
+## Convert Ensembl IDs to Gene Names
+library('biomaRt')
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+genes <- names(sample_expression_filtered)[2:ncol(sample_expression_filtered)]
+alternate <- gsub(".*[.]","", genes)
+genes <- gsub("[.].*","", genes)
+G_list <- getBM(filters= "ensembl_gene_id",attributes= c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
+
+names(sample_expression_filtered) <- gsub("[.].*","", names(sample_expression_filtered))
+sample_expression_filtered <- sample_expression_filtered %>%
+    dplyr::select(c("X", G_list$ensembl_gene_id)) %>%
+    subset(.,select = which(!duplicated(names(.))))
+names(sample_expression_filtered)[2:ncol(sample_expression_filtered)] <- G_list$hgnc_symbol
+
+
+
 
 
 ## PCA exploration
@@ -85,7 +97,10 @@ grid.arrange(p1,p2)
 ## mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 ## genes <- names(sample_expression)[2:ncol(sample_expression)]
 ## genes <- gsub("[.].*","", genes)
-## G_list <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
+
+## G_list <- getBM(filters= "ensembl_gene_id",
+##attributes= c("ensembl_gene_id","hgnc_symbol"),
+##values=genes,mart= mart)
 
 ## names(sample_expression) <- gsub("[.].*","", names(sample_expression))
 
