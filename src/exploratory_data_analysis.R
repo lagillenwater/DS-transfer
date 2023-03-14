@@ -59,7 +59,9 @@ design <- model.matrix(~0 + as.factor(tcga.cgc_sample_sample_type), data = sampl
 colnames(design) <- c("Primary_Tumor", "Solid_Tissue_Normal")
 contrast <- makeContrasts(constrast = Primary_Tumor -  Solid_Tissue_Normal, levels = design)
 fit <- eBayes(contrasts.fit(lmFit(sample_expression_filtered, design), contrast))
-topTable(fit, adjust = 'fdr', number = 100)
+deg_res <- topTable(fit, adjust = 'fdr', number = 13184, p.value = .05)
+deg_res <- deg_res %>% arrange(desc(logFC))
+write.csv(deg_res,"./results/tcga/deg/prostate_deg.csv", row.names = F)
 
 
 
