@@ -2,10 +2,9 @@
 
 library(tidyverse)
 
-
 ## Create smaller sample datasets for testing
 
-## Prostate 
+## Prostate Cancer Data
 meta <- read.csv("./data/tcga/PRAD_metadata.csv")
 expr <- read.csv("./data/tcga/PRAD_expression.csv")
 
@@ -20,68 +19,37 @@ sample_expression <- expr %>% filter(X %in% sample_ids)
 sample_meta <- meta %>% filter(tcga.cgc_case_id %in% tcga_ids)
 
 
-## Filter genes by pathways
-library('biomaRt')
-mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
-genes <- names(sample_expression)[2:ncol(sample_expression)]
-genes <- gsub("[.].*","", genes)
-G_list <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
-
-names(sample_expression) <- gsub("[.].*","", names(sample_expression))
 
 
-## Prostate pathways
-pro <- read.delim("../data/Gene Pathways/KEGG_PROSTATE_CANCER.v2023.1.Hs.tsv")
-pro <- pro[17,2]
-pro <- unlist(strsplit(unlist(pro), ","))
 
-## Bladder pathways
-bla <- read.delim("../data/Gene Pathways/KEGG_BLADDER_CANCER.v2023.1.Hs.tsv")
-bla <- bla[17,2]
-bla <- unlist(strsplit(unlist(bla), ","))
+    
+## ## Apply variance filter to genes
 
+## gene_vars <- sample_expression %>%
+##     summarise(across(where(is.numeric), var))
 
-## Housekeeping genes
-h <- read.delim("../data/Gene Pathways/HSIAO_HOUSEKEEPING_GENES.v2023.1.Hs.tsv")
-h <- h[17,2]
-h <- unlist(strsplit(unlist(h), ","))
+## high_variance_genes <- gene_vars %>%
+##     pivot_longer(cols = everything(), names_to = "gene",values_to = "variance") %>%
+##     arrange(desc(variance)) %>%
+##     top_n(10000)
 
-filter_genes <- unique(c(pro,bla,h))
-filter_genes <- filter_genes[filter_genes != ""]
-
-G_list <- G_list %>%
-    filter(hgnc_symbol %in% filter_genes)
-
-sample_expression_filtered <- sample_expression %>%
-    dplyr::select(c("X", G_list$ensembl_gene_id))
-
-## Apply variance filter to genes
-
-gene_vars <- sample_expression %>%
-    summarise(across(where(is.numeric), var))
-
-high_variance_genes <- gene_vars %>%
-    pivot_longer(cols = everything(), names_to = "gene",values_to = "variance") %>%
-    arrange(desc(variance)) %>%
-    top_n(10000)
-
-sample_expression_filtered <- sample_expression %>%
-    select(c('X', high_variance_genes$gene))
+## sample_expression_filtered <- sample_expression %>%
+##     select(c('X', high_variance_genes$gene))
 
 ## log transform
-sample_expression_filtered[,2:ncol(sample_expression_filtered)] <- log2(sample_expression_filtered[,2:ncol(sample_expression_filtered)]+1)
+##sample_expression_filtered[,2:ncol(sample_expression_filtered)] <- log2(sample_expression_filtered[,2:ncol(sample_expression_filtered)]+1)
 
 
 ## PCA exploration
 library(FactoMineR)
 
 data <- sample_expression_filtered %>%
-    inner_join(sample_meta %>%
-    select(X,tcga.cgc_sample_sample_type,tcga.xml_stage_event_gleason_grading, tcga.cgc_case_id,tcga.cgc_slide_percent_stromal_cells ), by = 'X') %>%
+    inner_join(sample_meta %>% dplyr::select(X,tcga.cgc_sample_sample_type, tcga.cgc_case_id, tcga.cgc_case_age_at_diagnosis ), by = 'X') %>%
     filter(!(tcga.cgc_case_id %in% c("TCGA-HC-8258", "TCGA-HC-7740"))) %>%
     column_to_rownames('X') 
 
-res.pca <- PCA(data, quanti.sup = c("tcga.xml_stage_event_gleason_grading","tcga.cgc_slide_percent_stromal_cells" ), quali.sup = c("tcga.cgc_sample_sample_type", "tcga.cgc_case_id"), graph = F)
+res.pca <- PCA(data, quanti.sup = c("tcga.cgc_case_age_at_diagnosis" ), quali.sup = c("tcga.cgc_sample_sample_type", "tcga.cgc_case_id"), graph = F, ncp = 100)
+plot.PCA(res.pca, label = "none")
 
 PC1 <- res.pca$ind$coord[,1]
 PC2 <- res.pca$ind$coord[,2]
@@ -96,7 +64,7 @@ p1 <- ggplot(PCs, aes(PC1,PC2, color = data$tcga.cgc_sample_sample_type)) +
 
 
 
-p2 <- ggplot(PCs, aes(PC1,PC2, color = data$tcga.xml_stage_event_gleason_grading)) + 
+p2 <- ggplot(PCs, aes(PC1,PC2, color = data$tcga.cgc_case_age_at_diagnosis)) + 
     geom_point() +
     theme_minimal() +
     theme(legend.position = "bottom")
@@ -104,4 +72,50 @@ p2 <- ggplot(PCs, aes(PC1,PC2, color = data$tcga.xml_stage_event_gleason_grading
 
 library(gridExtra)
 
-tcga.cgcgrid.arrange(p1,p2)
+grid.arrange(p1,p2)
+
+
+
+#### Old Code
+
+## Considering filtering genes by named pathways. After consulation with Mike about the potential for pathways including genes not relevant to prostate cancer, I decided to test empirically for differentially expressed genes. 
+
+## ## Filter genes by pathways
+## library('biomaRt')
+## mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+## genes <- names(sample_expression)[2:ncol(sample_expression)]
+## genes <- gsub("[.].*","", genes)
+## G_list <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
+
+## names(sample_expression) <- gsub("[.].*","", names(sample_expression))
+
+
+## ## Prostate pathways
+## pro <- read.delim("../data/Gene Pathways/KEGG_PROSTATE_CANCER.v2023.1.Hs.tsv")
+## pro <- pro[17,2]
+## pro <- unlist(strsplit(unlist(pro), ","))
+
+## ## Bladder pathways
+## bla <- read.delim("../data/Gene Pathways/KEGG_BLADDER_CANCER.v2023.1.Hs.tsv")
+## bla <- bla[17,2]
+## bla <- unlist(strsplit(unlist(bla), ","))
+
+
+## ## Housekeeping genes
+## h <- read.delim("../data/Gene Pathways/HSIAO_HOUSEKEEPING_GENES.v2023.1.Hs.tsv")
+## h <- h[17,2]
+## h <- unlist(strsplit(unlist(h), ","))
+
+## filter_genes <- unique(c(pro,bla,h))
+## filter_genes <- filter_genes[filter_genes != ""]
+
+## G_list <- G_list %>%
+##     filter(hgnc_symbol %in% filter_genes)
+
+## sample_expression_filtered <- sample_expression %>%
+##     dplyr::select(c("X", G_list$ensembl_gene_id)) 
+
+
+## names(sample_expression_filtered)[2:ncol(sample_expression_filtered)] <- G_list$hgnc_symbol
+
+## sample_expression_filtered <- subset(sample_expression_filtered, select = which(!duplicated(names(sample_expression_filtered))))
