@@ -41,6 +41,7 @@ genes <- names(sample_expression_filtered)[2:ncol(sample_expression_filtered)]
 alternate <- gsub(".*[.]","", genes)
 genes <- gsub("[.].*","", genes)
 G_list <- getBM(filters= "ensembl_gene_id",attributes= c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
+G_list <- G_list %>% filter(hgnc_symbol != "")
 
 names(sample_expression_filtered) <- gsub("[.].*","", names(sample_expression_filtered))
 sample_expression_filtered <- sample_expression_filtered %>%
@@ -49,6 +50,16 @@ sample_expression_filtered <- sample_expression_filtered %>%
 names(sample_expression_filtered)[2:ncol(sample_expression_filtered)] <- G_list$hgnc_symbol
 
 
+## DEG
+library(limma)
+sample_expression_filtered <- sample_expression_filtered %>%
+    column_to_rownames('X') %>%
+    t()
+design <- model.matrix(~0 + as.factor(tcga.cgc_sample_sample_type), data = sample_meta)
+colnames(design) <- c("Primary_Tumor", "Solid_Tissue_Normal")
+contrast <- makeContrasts(constrast = Primary_Tumor -  Solid_Tissue_Normal, levels = design)
+fit <- eBayes(contrasts.fit(lmFit(sample_expression_filtered, design), contrast))
+topTable(fit, adjust = 'fdr', number = 100)
 
 
 
