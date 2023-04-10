@@ -1,4 +1,6 @@
 
+## Load the data
+load("./data/processed/prostate_gene_expression.RData")
 
 
 ## DEG
