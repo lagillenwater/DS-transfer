@@ -29,9 +29,15 @@ variance_filtered <- expression %>%
 
 ## pivot wider. Have to include the unique identifier for row numbers to avoid any errors. 
 htp_expr <- variance_filtered %>%
-    select(LabID, Gene_name,EnsemblID,Chr,logValue) %>%
+    select(LabID, Gene_name,Chr,logValue) %>%
     group_by(Gene_name) %>%
     mutate(row = row_number())%>%
-    pivot_wider(names_from = LabID, id_cols = c(Gene_name, Chr,EnsemblID), values_from = logValue) 
+    pivot_wider(names_from = Gene_name, id_cols = LabID, values_from = logValue) 
 
-save(htp_expr, file = "../data/HTP_transcription_counts_wide_1000.Rdata")
+
+### get the mappings of gene_name, ensembl, and chr from expression
+gene_map <- expression %>%
+    select(Gene_name, EnsemblID,Chr) %>%
+    filter(Gene_name %in% top_1000$Gene_name)
+
+save(list(expression = htp_expr,gene_map = gene_map), file = "../data/HTP_transcription_counts_wide_1000.Rdata")
