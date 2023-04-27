@@ -40,4 +40,7 @@ gene_map <- expression %>%
     select(Gene_name, EnsemblID,Chr) %>%
     filter(Gene_name %in% top_1000$Gene_name)
 
-save(list(expression = htp_expr,gene_map = gene_map), file = "../data/HTP_transcription_counts_wide_1000.Rdata")
+expression_list<- list(expression = htp_expr,gene_map = gene_map)
+save(expression_list, file = "../data/HTP_transcription_counts_wide_1000.Rdata")
+
+
