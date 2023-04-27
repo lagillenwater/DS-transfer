@@ -34,5 +34,4 @@ htp_expr <- variance_filtered %>%
     mutate(row = row_number())%>%
     pivot_wider(names_from = LabID, id_cols = c(Gene_name, Chr,EnsemblID), values_from = Value) 
 
-save(htp_expr, file = "./data/HTP_transcription_counts_wide.Rdata")
-
+save(htp_expr, file = "./data/HTP_transcription_counts_wide_1000.Rdata")
