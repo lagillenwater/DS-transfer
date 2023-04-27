@@ -8,7 +8,7 @@
 library(tidyverse)
 
 ## load expression data
-expression <- read.delim("./data/HTP_WholeBlood_RNAseq_Counts_Synapse.txt")
+expression <- read.delim("../data/HTP_WholeBlood_RNAseq_Counts_Synapse.txt")
 
 ## logtranformation
 expression$logValue <- log(expression$Value+1)
@@ -29,9 +29,9 @@ variance_filtered <- expression %>%
 
 ## pivot wider. Have to include the unique identifier for row numbers to avoid any errors. 
 htp_expr <- variance_filtered %>%
-    select(LabID, Gene_name,EnsemblID,Chr,Value) %>%
+    select(LabID, Gene_name,EnsemblID,Chr,logValue) %>%
     group_by(Gene_name) %>%
     mutate(row = row_number())%>%
-    pivot_wider(names_from = LabID, id_cols = c(Gene_name, Chr,EnsemblID), values_from = Value) 
+    pivot_wider(names_from = LabID, id_cols = c(Gene_name, Chr,EnsemblID), values_from = logValue) 
 
-save(htp_expr, file = "./data/HTP_transcription_counts_wide_1000.Rdata")
+save(htp_expr, file = "../data/HTP_transcription_counts_wide_1000.Rdata")
