@@ -35,7 +35,7 @@ variance_filtered <- expression %>%
 ## pivot wider. Have to include the unique identifier for row numbers to avoid any errors. 
 htp_expr <- variance_filtered %>%
     select(LabID, Gene_name,logValue) %>%
-    distinct(Gene_name, .keep_all = T) %>%
+    distinct(LabID, Gene_name, .keep_all = T) %>%
     pivot_wider(names_from = Gene_name, id_cols = LabID, values_from = logValue)
 
 
