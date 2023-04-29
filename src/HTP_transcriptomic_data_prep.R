@@ -14,17 +14,19 @@ expression <- read.delim("../data/HTP_WholeBlood_RNAseq_Counts_Synapse.txt")
 expression$logValue <- log(expression$Value+1)
 
 ## apply variance filter to protein coding genes
-## for now I'm selecting the top 1000 genes for testing purposes
-top_1000 <- expression %>%
-    filter(Gene_type == "protein_coding") %>%
+prot_filtered <- expression %>%
+    filter(Gene_type == "protein_coding") 
+
+
+## filtering based on variance threshold
+var_filtered <- prot_filtered %>%
     group_by(EnsemblID) %>%
     summarise(variance = var(logValue)) %>%
-    arrange(desc(variance)) %>%
-    top_n(1000) 
-
+    filter(variance > .05)
+    
 
 variance_filtered <- expression %>%
-    filter(EnsemblID %in% top_1000$EnsemblID) %>%
+    filter(EnsemblID %in% var_filtered$EnsemblID) %>%
     as_tibble() 
     
 
@@ -33,6 +35,7 @@ variance_filtered <- expression %>%
 ## pivot wider. Have to include the unique identifier for row numbers to avoid any errors. 
 htp_expr <- variance_filtered %>%
     select(LabID, Gene_name,logValue) %>%
+    distinct(Gene_name, .keep_all = T) %>%
     pivot_wider(names_from = Gene_name, id_cols = LabID, values_from = logValue)
 
 
@@ -43,10 +46,8 @@ htp_expr <- variance_filtered %>%
 
 gene_map <- expression %>%
     select(Gene_name, EnsemblID,Chr) %>%
-    filter(EnsemblID %in% top_1000$EnsemblID) %>%
+    filter(EnsemblID %in% variance_filtered$EnsemblID) %>%
     as_tibble()
 
 expression_list<- list(expression = htp_expr,gene_map = gene_map)
-save(expression_list, file = "../data/HTP_transcription_counts_wide_1000.Rdata")
-
-
+save(expression_list, file = "../data/HTP_transcription_counts_wide_protein_coding_variance_filtered.Rdata")
