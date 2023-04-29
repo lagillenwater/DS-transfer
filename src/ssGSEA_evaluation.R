@@ -14,7 +14,7 @@ library(ssGSEA2)
 library(tidyverse)
 library(cmapR)
 library(ComplexHeatmap)
-
+library(circlize)
 ## Load the data
 load("../data/HTP_transcription_counts_wide_protein_coding_variance_filtered.Rdata")
 
@@ -72,7 +72,9 @@ scores_mat <- scores_mat[, colnames(scores_mat) %in% rownames(meta_heatmap)]
 
 identical(rownames(meta_heatmap), colnames(scores_mat))
 
-ha <- HeatmapAnnotation(df = meta_heatmap)
+col_fun = list(Karyotype = c("T21" = "black", "Control" = "gray"))
+ha <- HeatmapAnnotation(df = meta_heatmap,
+                        col = list(Karyotype = c("T21" = "black", "Control" = "gray")))
 
 Heatmap(scores_mat,
         show_column_names = F,
