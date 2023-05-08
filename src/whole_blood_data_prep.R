@@ -21,9 +21,9 @@ prot_filtered <- expression %>%
 
 
 ## filtering based on variance threshold
-var_filtered <- expression %>%
+var_filtered <- prot_filtered %>%
     group_by(EnsemblID) %>%
-    summarise(variance = var(Value)) %>%
+    summarise(variance = var(logValue)) %>%
     filter(variance > .01)
     
 
@@ -58,6 +58,7 @@ save(expression_list, file = "../data/HTP_transcription_counts_wide_protein_codi
 ##### Processing the whole blood transcriptomic data from gtex
 load("../data/HTP_transcription_counts_wide_protein_coding_variance_filtered.Rdata")
 gtex_expression <- read.csv("../data/gtex/BLOOD_expression.csv")
+
 htp_expr <- expression_list$expression
 htp_expr <- as.data.frame(htp_expr)
 htp_map <- expression_list$gene_map
@@ -67,19 +68,25 @@ htp_map <- htp_map %>%
     distinct(Gene_name, .keep_all = T) %>%
     filter(Gene_name %in% names(htp_expr))
 
-
-
-
-
-
-#### creating temporary datasets
 tmp_gtex  <- gtex_expression %>%
     select(c("X", which(names(gtex_expression) %in% htp_map$EnsemblID))) %>%
     column_to_rownames('X')
 
+### GTEX data is RPKMs, divide by 2
+tmp_gtex <- as.data.frame(apply(tmp_gtex,2, function(x) x/2))
+
+
+### Should I add a variance filter to the GTEX data?
+var_filtered <- tmp_gtex %>%
+    summarise(across(1:ncol(tmp_gtex),  var)) %>%
+    select(which(var_filtered > .01))
+
+tmp_gtex <- tmp_gtex %>%
+    select(names(var_filtered))
+
 new_names <- htp_map %>%
-    filter(EnsemblID %in% names(gtex_expression)) %>%
-    arrange(match(EnsemblID, names(gtex_expression)))
+    filter(EnsemblID %in% names(tmp_gtex)) %>%
+    arrange(match(EnsemblID, names(tmp_gtex)))
 
 names(tmp_gtex) <- new_names$Gene_name
 
@@ -100,35 +107,44 @@ tmp_htp <- htp_expr %>%
     column_to_rownames("LabID") %>%
     relocate(names(tmp_gtex))
 
-
+### save the sample ids
+htp_names <- rownames(tmp_htp)
+gtex_names <- rownames(tmp_gtex)
 
 #### Batch correction of the gene expression data
 combined <- as.data.frame(t(rbind(tmp_htp, tmp_gtex)))
-batch <- c(rep("HTP", nrow(htp_meta)), rep("GTEX", nrow(tmp_gtex)))
-combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=FALSE, mean.only=TRUE)
+batch <- c(rep(0, nrow(htp_meta)), rep(1, nrow(tmp_gtex)))
+combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=TRUE, mean.only=FALSE, ref.batch = 1)
 
+#### scaling the data
+##tmp_htp <- apply(tmp_htp,2, scale)
+##tmp_gtex <- apply(tmp_gtex, 2,scale )
+
+### prepping for distribution analysis
+combined <- as.data.frame(t(combined))
+combined <- as.data.frame(apply(combined, 2, scale))
+rownames(combined)  <- c(htp_names, gtex_names)
 
 ### Separating out the D21 samples 
-tmp_htp_D21 <- htp_expr %>%
-    select(c("LabID", which(names(htp_expr) %in% names(tmp_gtex)))) %>%
-    filter(LabID %in% D21_IDs) %>%
-    column_to_rownames("LabID") %>%
-    relocate(names(tmp_gtex))
-
-identical(names(tmp_gtex), names(tmp_htp))
+tmp_combined_D21 <- combined %>%
+    filter(rownames(combined) %in% D21_IDs) 
 
 
-tmp_gtex <- apply(tmp_gtex, 2,scale )
-tmp_htp_D21 <- apply(tmp_htp_D21, 2, scale)
-tmp_htp <- apply(tmp_htp,2, scale)
+
+tmp_combined_gtex <- combined %>%
+    filter(rownames(combined) %in% gtex_names)
+
+identical(names(tmp_combined_gtex), names(tmp_combined_D21))
+
+
+
 ### KS test of the data to identify similar distributions
 
-KS <- sapply(1:ncol(tmp_htp), function(x) ks.test(tmp_gtex[,x], tmp_htp_D21[,x])$p.value)
-names(KS) <- colnames(tmp_gtex)
+KS <- sapply(1:ncol(tmp_combined_D21), function(x) ks.test(tmp_combined_D21[,x], tmp_combined_gtex[,x])$p.value)
+names(KS) <- colnames(tmp_combined_D21)
 KS <- sort(KS)
 par(mfrow = c(1,1))
-plot(KS, main = "K-S pvalues for HTP D21 and GTEX whole blood profiles", xlab = "Gene", pch =16, col = "dark grey")
-abline(h = .05, col = "red")
+
 
 
 
@@ -136,14 +152,16 @@ abline(h = .05, col = "red")
 ### exploring some of the distributions
 # loading the required package
 library(dgof)
-s <- names(KS)[length(KS)]
-s <- names(KS)[1]
-var1 <- tmp_gtex[,s]
-var2 <- tmp_htp_D21[,s]
+## s <- names(KS)[length(KS)]
+ s <- names(KS)[1]
+var1 <- tmp_combined_gtex[,s]
+var2 <- tmp_combined_D21[,s]
 ks_p <- ks.test(var1, var2)$p.value
 # plotting the result
 # visualization
-par(mfrow = c(1,1))
+par(mfrow = c(2,2))
+plot(KS, main = "K-S pvalues for HTP D21 and GTEX whole blood profiles", xlab = "Gene", pch =16, col = "dark grey")
+abline(h = .05, col = "red")
 plot(ecdf(var1),
      xlim = range(c(var1, var2)),
      col = "blue",
@@ -152,11 +170,6 @@ plot(ecdf(var2),
      add = TRUE,
      lty = "dashed",
      col = "red")
- 
-
-
-
-par(mfrow = c(1,2))
 hist(var1, main = "GTEX")
 hist(var2, main = "HTP")
 
