@@ -7,7 +7,7 @@
 
 library(tidyverse)
 library(caret)
-lib
+library(sva)
 ## load expression data
 expression <- read.delim("../data/HTP_WholeBlood_RNAseq_FPKMs_Synapse.txt")
 
@@ -21,9 +21,9 @@ prot_filtered <- expression %>%
 
 
 ## filtering based on variance threshold
-var_filtered <- prot_filtered %>%
+var_filtered <- expression %>%
     group_by(EnsemblID) %>%
-    summarise(variance = var(logValue)) %>%
+    summarise(variance = var(Value)) %>%
     filter(variance > .01)
     
 
@@ -57,6 +57,7 @@ save(expression_list, file = "../data/HTP_transcription_counts_wide_protein_codi
 
 ##### Processing the whole blood transcriptomic data from gtex
 load("../data/HTP_transcription_counts_wide_protein_coding_variance_filtered.Rdata")
+gtex_expression <- read.csv("../data/gtex/BLOOD_expression.csv")
 htp_expr <- expression_list$expression
 htp_expr <- as.data.frame(htp_expr)
 htp_map <- expression_list$gene_map
@@ -68,7 +69,7 @@ htp_map <- htp_map %>%
 
 
 
-gtex_expression <- read.csv("../data/gtex/BLOOD_expression.csv")
+
 
 
 #### creating temporary datasets
@@ -90,13 +91,8 @@ htp_meta <- htp_meta %>%
     filter(LabID %in% htp_expr$LabID)
 D21_IDs <- htp_meta %>% filter(Karyotype == "Control") %>% .$LabID
 
-### filtering the htp_data
-tmp_htp_D21 <- htp_expr %>%
-    select(c("LabID", which(names(htp_expr) %in% names(tmp_gtex)))) %>%
-    filter(LabID %in% D21_IDs) %>%
-    column_to_rownames("LabID") %>%
-    relocate(names(tmp_gtex))
 
+### filtering the htp_data
 tmp_htp <- htp_expr %>%
     select(c("LabID", which(names(htp_expr) %in% names(tmp_gtex))))%>%
     filter(LabID %in% htp_meta$LabID) %>%
@@ -104,6 +100,20 @@ tmp_htp <- htp_expr %>%
     column_to_rownames("LabID") %>%
     relocate(names(tmp_gtex))
 
+
+
+#### Batch correction of the gene expression data
+combined <- as.data.frame(t(rbind(tmp_htp, tmp_gtex)))
+batch <- c(rep("HTP", nrow(htp_meta)), rep("GTEX", nrow(tmp_gtex)))
+combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=FALSE, mean.only=TRUE)
+
+
+### Separating out the D21 samples 
+tmp_htp_D21 <- htp_expr %>%
+    select(c("LabID", which(names(htp_expr) %in% names(tmp_gtex)))) %>%
+    filter(LabID %in% D21_IDs) %>%
+    column_to_rownames("LabID") %>%
+    relocate(names(tmp_gtex))
 
 identical(names(tmp_gtex), names(tmp_htp))
 
@@ -198,4 +208,21 @@ write.csv(y_test, "../data/processed/Y_test.csv", row.names = F)
 
 
 
+library(sva)
+library(bladderbatch)
+data(bladderdata)
+dat <- bladderEset[1:50,]
 
+pheno = pData(dat)
+edata = exprs(dat)
+batch = pheno$batch
+mod = model.matrix(~as.factor(cancer), data=pheno)
+
+# parametric adjustment
+combat_edata1 = ComBat(dat=edata, batch=batch, mod=NULL, par.prior=TRUE, prior.plots=FALSE)
+
+# non-parametric adjustment, mean-only version
+combat_edata2 = ComBat(dat=edata, batch=batch, mod=NULL, par.prior=FALSE, mean.only=TRUE)
+
+# reference-batch version, with covariates
+combat_edata3 = ComBat(dat=edata, batch=batch, mod=mod, par.prior=TRUE, ref.batch=3)
