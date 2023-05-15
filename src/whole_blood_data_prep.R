@@ -56,6 +56,8 @@ save(expression_list, file = "../data/HTP_transcription_counts_wide_protein_codi
 
 
 ##### Processing the whole blood transcriptomic data from gtex
+library(tidyverse)
+library(sva)
 load("../data/HTP_transcription_counts_wide_protein_coding_variance_filtered.Rdata")
 gtex_expression <- read.csv("../data/gtex/BLOOD_expression.csv")
 
@@ -69,7 +71,7 @@ htp_map <- htp_map %>%
     filter(Gene_name %in% names(htp_expr))
 
 tmp_gtex  <- gtex_expression %>%
-    select(c("X", which(names(gtex_expression) %in% htp_map$EnsemblID))) %>%
+    select(c("X", which(gsub("[.].*", "", names(gtex_expression)) %in% gsub("[.].*", "",htp_map$EnsemblID)))) %>%
     column_to_rownames('X')
 
 ### GTEX data is RPKMs, divide by 2
@@ -78,15 +80,17 @@ tmp_gtex <- as.data.frame(apply(tmp_gtex,2, function(x) x/2))
 
 ### Should I add a variance filter to the GTEX data?
 var_filtered <- tmp_gtex %>%
-    summarise(across(1:ncol(tmp_gtex),  var)) %>%
+    summarise(across(1:ncol(tmp_gtex),  var))
+
+var_filtered <- var_filtered %>%
     select(which(var_filtered > .01))
 
 tmp_gtex <- tmp_gtex %>%
     select(names(var_filtered))
 
 new_names <- htp_map %>%
-    filter(EnsemblID %in% names(tmp_gtex)) %>%
-    arrange(match(EnsemblID, names(tmp_gtex)))
+    filter(gsub("[.].*", "",EnsemblID) %in% gsub("[.].*", "",names(tmp_gtex))) %>%
+    arrange(match(gsub("[.].*", "",EnsemblID), gsub("[.].*", "",names(tmp_gtex))))
 
 names(tmp_gtex) <- new_names$Gene_name
 
@@ -144,6 +148,8 @@ KS <- sapply(1:ncol(tmp_combined_D21), function(x) ks.test(tmp_combined_D21[,x],
 names(KS) <- colnames(tmp_combined_D21)
 KS <- sort(KS)
 par(mfrow = c(1,1))
+plot(KS, main = "K-S pvalues for HTP D21 and GTEX whole blood profiles", xlab = "Gene", pch =16, col = "dark grey")
+abline(h = .05, col = "red")
 
 
 
@@ -159,9 +165,7 @@ var2 <- tmp_combined_D21[,s]
 ks_p <- ks.test(var1, var2)$p.value
 # plotting the result
 # visualization
-par(mfrow = c(2,2))
-plot(KS, main = "K-S pvalues for HTP D21 and GTEX whole blood profiles", xlab = "Gene", pch =16, col = "dark grey")
-abline(h = .05, col = "red")
+par(mfrow = c(2,3))
 plot(ecdf(var1),
      xlim = range(c(var1, var2)),
      col = "blue",
@@ -172,7 +176,22 @@ plot(ecdf(var2),
      col = "red")
 hist(var1, main = "GTEX")
 hist(var2, main = "HTP")
-
+ s <- names(KS)[length(KS)]
+var1 <- tmp_combined_gtex[,s]
+var2 <- tmp_combined_D21[,s]
+ks_p <- ks.test(var1, var2)$p.value
+# plotting the result
+# visualization
+plot(ecdf(var1),
+     xlim = range(c(var1, var2)),
+     col = "blue",
+     main = paste(s, " - K-S p = ", ks_p ))
+plot(ecdf(var2),
+     add = TRUE,
+     lty = "dashed",
+     col = "red")
+hist(var1, main = "GTEX")
+hist(var2, main = "HTP")
 
 
 ### Filter by genes with similar distributions
@@ -220,22 +239,3 @@ write.csv(y_train, "../data/processed/Y_train.csv", row.names = F)
 write.csv(y_test, "../data/processed/Y_test.csv", row.names = F)
 
 
-
-library(sva)
-library(bladderbatch)
-data(bladderdata)
-dat <- bladderEset[1:50,]
-
-pheno = pData(dat)
-edata = exprs(dat)
-batch = pheno$batch
-mod = model.matrix(~as.factor(cancer), data=pheno)
-
-# parametric adjustment
-combat_edata1 = ComBat(dat=edata, batch=batch, mod=NULL, par.prior=TRUE, prior.plots=FALSE)
-
-# non-parametric adjustment, mean-only version
-combat_edata2 = ComBat(dat=edata, batch=batch, mod=NULL, par.prior=FALSE, mean.only=TRUE)
-
-# reference-batch version, with covariates
-combat_edata3 = ComBat(dat=edata, batch=batch, mod=mod, par.prior=TRUE, ref.batch=3)
