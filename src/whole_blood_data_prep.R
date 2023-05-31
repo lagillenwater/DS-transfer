@@ -11,30 +11,41 @@ library(sva)
 ## load expression data
 expression <- read.delim("../data/HTP_WholeBlood_RNAseq_FPKMs_Synapse.txt")
 
+## find the number of subjects
+n <- length(unique(expression$LabID))
+
+## filter for those with less than 20% missingness
+missingness <- expression %>%
+    group_by(EnsemblID) %>%
+    summarise(missingness = sum(Value ==0)/n) 
+
+miss_filtered <- expression %>%
+    filter(EnsemblID %in% (missingness %>% filter(missingness < .2) %>% .$EnsemblID))
 
 ## logtranformation
 expression$logValue <- log(expression$Value+1)
 
-## apply variance filter to protein coding genes
-prot_filtered <- expression %>%
-    filter(Gene_type == "protein_coding") 
-
 
 ## filtering based on variance threshold
-var_filtered <- prot_filtered %>%
+var_filtered <- miss_filtered %>%
     group_by(EnsemblID) %>%
     summarise(variance = var(logValue)) %>%
-    filter(variance > .01)
+    filter(variance > .2)
     
 
-variance_filtered <- expression %>%
+variance_filtered <- miss_filtered %>%
     filter(EnsemblID %in% var_filtered$EnsemblID) %>%
     as_tibble() 
-    
+
+
+### protein_filtered
+prot_filtered <- variance_filtered %>%
+    filter(Gene_type == "protein_coding")
 
 ## pivot wider. Have to include the unique identifier for row numbers to avoid any errors. 
-htp_expr <- variance_filtered %>%
-    select(LabID, Gene_name,Value) %>%
+
+htp_expr <- prot_filtered %>%
+    dplyr::select(LabID, Gene_name,Value) %>%
     distinct(LabID, Gene_name, .keep_all = T) %>%
     pivot_wider(names_from = Gene_name, id_cols = LabID, values_from = Value)
 
@@ -43,17 +54,12 @@ htp_expr <- variance_filtered %>%
 
 ### get the mappings of gene_name, ensembl, and chr from expression
 gene_map <- expression %>%
-    select(Gene_name, EnsemblID,Chr) %>%
+    dplyr::select(Gene_name, EnsemblID,Chr) %>%
     filter(EnsemblID %in% variance_filtered$EnsemblID) %>%
     as_tibble()
 
 expression_list<- list(expression = htp_expr,gene_map = gene_map)
-save(expression_list, file = "../data/HTP_transcription_counts_wide_protein_coding_variance_filtered.Rdata")
-
-
-
-
-
+save(expression_list, file = "../data/HTP_transcription_FPKMs_wide_missing_variance_filtered.Rdata")
 
 ##### Processing the whole blood transcriptomic data from gtex
 library(tidyverse)
@@ -77,13 +83,12 @@ tmp_gtex  <- gtex_expression %>%
 ### GTEX data is RPKMs, divide by 2
 tmp_gtex <- as.data.frame(apply(tmp_gtex,2, function(x) x/2))
 
-
 ### Should I add a variance filter to the GTEX data?
 var_filtered <- tmp_gtex %>%
     summarise(across(1:ncol(tmp_gtex),  var))
 
 var_filtered <- var_filtered %>%
-    select(which(var_filtered > .01))
+    select(which(var_filtered > .1))
 
 tmp_gtex <- tmp_gtex %>%
     select(names(var_filtered))
@@ -117,8 +122,12 @@ gtex_names <- rownames(tmp_gtex)
 
 #### Batch correction of the gene expression data
 combined <- as.data.frame(t(rbind(tmp_htp, tmp_gtex)))
-batch <- c(rep(0, nrow(htp_meta)), rep(1, nrow(tmp_gtex)))
-combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=TRUE, mean.only=FALSE, ref.batch = 1)
+batch <- as.factor(c(rep(0, nrow(htp_meta)), rep(1, nrow(tmp_gtex))))
+
+library(limma)
+combined <- removeBatchEffect(combined, batch)
+
+### combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=TRUE, mean.only=FALSE, ref.batch = 1)
 
 #### scaling the data
 ##tmp_htp <- apply(tmp_htp,2, scale)
@@ -132,8 +141,6 @@ rownames(combined)  <- c(htp_names, gtex_names)
 ### Separating out the D21 samples 
 tmp_combined_D21 <- combined %>%
     filter(rownames(combined) %in% D21_IDs) 
-
-
 
 tmp_combined_gtex <- combined %>%
     filter(rownames(combined) %in% gtex_names)
