@@ -2,9 +2,8 @@
 ##### First comparing blood and skin
 library(tidyverse)
 library(sva)
-blood <- read.csv("../data/gtex/BLOOD_expression.csv")
-
-skin <- read.csv("../data/gtex/skin_expression.csv")
+blood <- read.csv("../data/gtex/ADIPOSE_TISSUE_expression.csv")
+skin <- read.csv("../data/gtex/SKIN_expression.csv")
 
 ### check for identical names
 identical(names(blood), names(skin))
@@ -16,8 +15,7 @@ blood_var <- blood  %>%
 skin_var <- skin  %>%
     summarise(across(2:ncol(skin),  var))
 
-
-tokeep <- union(names(blood_var)[blood_var > .1],names(skin_var)[skin_var > .1])
+tokeep <- union(names(blood_var)[blood_var > .2],names(skin_var)[skin_var > .2])
 
 
 tmp_blood <- blood %>%
@@ -36,7 +34,7 @@ par(mfrow = c(1,1))
 plot(KS, main = "K-S pvalues for GTEX blood and skin profiles", xlab = "Gene", pch =16, col = "dark grey")
 abline(h = .05, col = "red")
 
-
+sum(KS > .05)/length(KS)
 
 ### exploring some of the distributions
 # loading the required package
@@ -76,14 +74,15 @@ plot(ecdf(var2),
 hist(var1, main = "blood")
 hist(var2, main = "skin")
 
-### save the sample ids
-htp_names <- rownames(tmp_htp)
-gtex_names <- rownames(tmp_gtex)
 
 #### Batch correction of the gene expression data
 combined <- as.data.frame(t(rbind(tmp_blood, tmp_skin)))
-batch <- c(rep(0, nrow(tmp_blood)), rep(1, nrow(tmp_skin)))
-combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=TRUE, mean.only=FALSE, ref.batch = 0)
+batch <- as.factor(c(rep(0, nrow(tmp_blood)), rep(1, nrow(tmp_skin))))
+
+library(limma)
+combined <- removeBatchEffect(combined, batch)
+
+# combined <- ComBat(dat=combined, batch=batch, mod=NULL, par.prior=TRUE, mean.only=FALSE, ref.batch = 0)
 
 #### scaling the data
 ##tmp_htp <- apply(tmp_htp,2, scale)
@@ -97,12 +96,8 @@ rownames(combined)  <- c(blood$X, skin$X)
 ### Separating out the D21 samples 
 tmp_combined_blood <- combined %>%
     filter(rownames(combined) %in% blood$X) 
-
-
-
 tmp_combined_skin <- combined %>%
     filter(rownames(combined) %in% skin$X)
-
 
 #### Compare distributions prior to scaling
 KS <- sapply(1:ncol(tmp_combined_blood), function(x) ks.test(tmp_combined_blood[,x], tmp_combined_skin[,x])$p.value)
@@ -112,7 +107,7 @@ par(mfrow = c(1,1))
 plot(KS, main = "K-S pvalues for GTEX blood and skin profiles", xlab = "Gene", pch =16, col = "dark grey")
 abline(h = .05, col = "red")
 
-
+sum(KS > .05) / length(KS)
 
 ### exploring some of the distributions
 # loading the required package

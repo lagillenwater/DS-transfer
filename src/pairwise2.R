@@ -64,7 +64,6 @@ genes <- c(which(names(ds_T21) %in% chr21$e.symbol), sample(2:ncol(ds_T21), 59))
 genes <- unique(genes)
 
 pairwiseRatios <- function(gene_expression, genes) {
-
     gene_expression <- gene_expression[,genes]
     ratios <- sapply(2:(ncol(gene_expression)-1), function(i) {
         print(i/ncol(gene_expression-1))
@@ -77,8 +76,8 @@ pairwiseRatios <- function(gene_expression, genes) {
      return(ratios)
 }
 
-T21_ratios <- pairwiseRatios(ds_T21,genes)
-D21_ratios <- pairwiseRatios(ds_D21, genes)
+T21_ratios <- pairwiseRatios(tumor,names(tumor))
+D21_ratios <- pairwiseRatios(normal, names(normal))
 
 
 
@@ -109,7 +108,9 @@ ggplot(data = toplot,  aes(x = T21_ratios_noinf, y = D21_ratios_noinf)) +
     theme_classic() +
     geom_abline(intercept = 0, linetype='dashed', col = 'red', size = 2) +
     xlim(c(-10,10))+
-    ylim(c(-10,10)) 
+    ylim(c(-10,10)) +
+    xlab("tumor") +
+    ylab("normal")
     
 
 rand <- rnorm(nrow(toplot), mean = 0, sd = .3)

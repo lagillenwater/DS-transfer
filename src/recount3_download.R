@@ -31,6 +31,7 @@ library(recount3)
 library(recount)
 library(tidyverse)
 
+
 option_list = list(
     make_option(c("-f", "--file_source"), type="character", default=NULL, 
               help="transcriptomic database ('sra', 'gtex', 'tcga')", metavar="character"),
@@ -40,8 +41,7 @@ option_list = list(
                 help="project number or title", metavar="character"),
     make_option(c("-s", "--species"), type="character", default='human', 
                 help="'human' or 'mouse' [default='human']", metavar="character")    
-   
-); 
+);
  
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
@@ -56,8 +56,8 @@ human_source <- human_projects %>% filter(file_source == opt$file_source)
 project <- human_source %>% filter(project == opt$project)
 
 rse_gene = create_rse(project)
-assay(rse_gene, "counts") = transform_counts(rse_gene)
-assays(rse_gene)$RPKM = recount::getRPKM(rse_gene)
+#assay(rse_gene, "counts") = transform_counts(rse_gene)
+#assays(rse_gene)$RPKM = recount::getRPKM(rse_gene)
 expression =as.data.frame(t(assays(rse_gene)$RPKM))
 metadata =  tryCatch({                               
     expand_sra_attributes(rse_gene)

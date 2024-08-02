@@ -15,14 +15,15 @@ def define_arguments():
     parser=argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     ## Required inputs
-    parser.add_argument("--data-file1",dest="data_file1",required=True,help="full dataset 1")        
     parser.add_argument("--train-file1",dest="train_file1",required=True,help="training dataset 1")
+    parser.add_argument("--train-file2",dest="train_file2",required=True,help="training dataset 2")
     parser.add_argument("--test-file1",dest="test_file1",required=True,help="testing dataset 1")
+    parser.add_argument("--test-file2",dest="test_file2",required=True,help="testing dataset 1")
     parser.add_argument("--output-dir",dest="output_dir",required=True,help="output directory")
 
-    parser.add_argument("--data-file2",dest="data_file2",required=True,help="full dataset 2")        
-    parser.add_argument("--train-file2",dest="train_file2",required=True,help="training dataset 2")
-    parser.add_argument("--test-file2",dest="test_file2",required=True,help="testing dataset 2")
+    # parser.add_argument("--data-file2",dest="data_file2",required=True,help="full dataset 2")        
+    # parser.add_argument("--train-file2",dest="train_file2",required=True,help="training dataset 2")
+    # parser.add_argument("--test-file2",dest="test_file2",required=True,help="testing dataset 2")
 
     # optional inputs
     parser.add_argument("--epochs", dest = "epochs", required=False, help="epochs", default=100, type = int)
@@ -37,14 +38,13 @@ def generate_arguments(parser):
     parser = define_arguments()
     args = parser.parse_args()
 
-    data_file1 = args.train_file1
     train_file1 = args.train_file1
     test_file1 = args.test_file1
-
-    data_file2 = args.train_file2
     train_file2 = args.train_file2
-    test_file2 = args.test_file2    
+    test_file2 = args.test_file2
 
+    
+   
     latent_dim = args.latent_dim
     epochs = args.epochs
     batch_size = args.batch_size
@@ -52,10 +52,12 @@ def generate_arguments(parser):
     return data_file1,train_file1,test_file1,data_file2,train_file2,test_file2,latent_dim, epochs,batch_size,output_dir
 
 # read in the training and testing files
-def read_input_files( train_file,test_file):
-    train = pd.read_csv(train_file, index_col = 0)
-    test = pd.read_csv(test_file, index_col = 0)
-    return train,test
+def read_input_files( train_file1,test_file1,train_file2,test_file2):
+    train1 = pd.read_csv(train_file1, index_col = 0)
+    test1 = pd.read_csv(test_file1, index_col = 0)
+    train2 = pd.read_csv(train_file2, index_col = 0)
+    test2 = pd.read_csv(test_file2, index_col = 0)
+    return train1,test1, train2, test2
 
 # find the training shape
 def get_input_dim(train):
@@ -82,8 +84,8 @@ def vanilla_vae(train_file, test_file, latent_dim, epochs, batch_size):
     x_train,x_test= read_input_files(train_file,test_file)
 
     original_dim = get_input_dim(x_train)
-    intermediate_dim = 16
-    latent_dim = 4
+    intermediate_dim = 100
+    latent_dim = 16
 
     inputs = keras.Input(shape=(original_dim,))
     h = layers.Dense(intermediate_dim, activation='relu')(inputs)
@@ -120,7 +122,7 @@ def vanilla_vae(train_file, test_file, latent_dim, epochs, batch_size):
     vae_loss = K.mean(reconstruction_loss + kl_loss)
     vae.add_loss(vae_loss)
     vae.compile(optimizer='adam')
-
+p
     # x_train = x_train.astype('float32') / 255.
     # x_test = x_test.astype('float32') / 255.
     # x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
@@ -130,6 +132,66 @@ def vanilla_vae(train_file, test_file, latent_dim, epochs, batch_size):
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(x_test,None))
+
+    history = pd.DataFrame(vae.history.history)
+
+    return vae,encoder,decoder,history
+    
+
+def transformer_vae(train_file1, test_file1, train_file2, test_file2, latent_dim, epochs, batch_size):
+    x_train,x_test,y_train,y_test= read_input_files(train_file1,test_file1, train_file2, test_file2)
+
+    original_dim = get_input_dim(x_train)
+    original_dim_y = get_input_dim(y_train)
+    intermediate_dim = 100
+    latent_dim = 16
+
+    inputs = keras.Input(shape=(original_dim,))
+    inputs_y = keras.Input(shape=(original_dim_y,))
+    h = layers.Dense(intermediate_dim, activation='relu')(inputs)
+    z_mean = layers.Dense(latent_dim)(h)
+    z_log_sigma = layers.Dense(latent_dim)(h)
+
+
+    def sampling(args):
+        z_mean, z_log_sigma = args
+        epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim),
+                                  mean=0., stddev=0.1)
+        return z_mean + K.exp(z_log_sigma) * epsilon
+
+    z = layers.Lambda(sampling)([z_mean, z_log_sigma])
+
+    # Create encoder
+    encoder = keras.Model(inputs, [z_mean, z_log_sigma, z], name='encoder')
+
+    # Create decoder
+    latent_inputs = keras.Input(shape=(latent_dim,), name='z_sampling')
+    x = layers.Dense(intermediate_dim, activation='relu')(latent_inputs)
+    outputs = layers.Dense(original_dim, activation='sigmoid')(x)
+    decoder = keras.Model(latent_inputs, outputs, name='decoder')
+
+    # instantiate VAE model
+    outputs = decoder(encoder(inputs)[2])
+    vae = keras.Model(inputs, outputs, name='vae_mlp')
+
+    reconstruction_loss = keras.losses.binary_crossentropy(inputs_y, outputs)
+    reconstruction_loss *= original_dim
+    kl_loss = 1 + z_log_sigma - K.square(z_mean) - K.exp(z_log_sigma)
+    kl_loss = K.sum(kl_loss, axis=-1)
+    kl_loss *= -0.5
+    vae_loss = K.mean(reconstruction_loss + kl_loss)
+    vae.add_loss(vae_loss)
+    vae.compile(optimizer='adam')
+
+    # x_train = x_train.astype('float32') / 255.
+    # x_test = x_test.astype('float32') / 255.
+    # x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
+    # x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
+
+    vae.fit(x_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_data=(y_test,None))
 
     history = pd.DataFrame(vae.history.history)
 
