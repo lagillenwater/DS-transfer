@@ -29,14 +29,6 @@ expression = t(h5read(destination_file, "data/expression", index=list(sample_loc
 rownames(expression) = genes
 colnames(expression) = samples[sample_locations]
 
-## extract geo metadata
-library(GEOquery)
-
-meta <- lapply(c(sample_locations, sample(1:length(samples), 100)), function(x) Meta(getGEO(samples[x]))[c("geo_accession","characteristics_ch1", "source_name_ch1")])
-
-sink("meta_example.txt")
-print(meta)
-sink()
 
 rownames(expression) = genes
 colnames(expression) = samples[sample_locations]
@@ -48,4 +40,13 @@ H5close()
 write.table(expression, file=extracted_expression_file, sep="\t", quote=FALSE, col.names=NA)
 print(paste0("Expression file was created at ", getwd(), "/", extracted_expression_file))
 
+## extract geo metadata
+library(GEOquery)
+
+meta <- lapply(c(sample_locations, sample(1:length(samples), 100)), function(x) Meta(getGEO(samples[x]))[c("geo_accession","characteristics_ch1", "source_name_ch1")])
+
+# write unstructured metadata to file
+sink("metadata.txt")
+print(meta)
+sink()
 
