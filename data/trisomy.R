@@ -24,26 +24,29 @@ genes = h5read(destination_file, "meta/genes/symbol")
 # Identify columns to be extracted
 sample_locations = which(samples %in% samp)
 
-# extract gene expression from compressed data
-expression = t(h5read(destination_file, "data/expression", index=list(sample_locations, 1:length(genes))))
-rownames(expression) = genes
-colnames(expression) = samples[sample_locations]
+## # extract gene expression from compressed data
+## expression = t(h5read(destination_file, "data/expression", index=list(sample_locations, 1:length(genes))))
+## rownames(expression) = genes
+## colnames(expression) = samples[sample_locations]
 
 
-rownames(expression) = genes
-colnames(expression) = samples[sample_locations]
+## rownames(expression) = genes
+## colnames(expression) = samples[sample_locations]
 
-H5close()
+## H5close()
 
 
-# Print file
-write.table(expression, file=extracted_expression_file, sep="\t", quote=FALSE, col.names=NA)
-print(paste0("Expression file was created at ", getwd(), "/", extracted_expression_file))
+## # Print file
+## write.table(expression, file=extracted_expression_file, sep="\t", quote=FALSE, col.names=NA)
+## print(paste0("Expression file was created at ", getwd(), "/", extracted_expression_file))
 
 ## extract geo metadata
-library(GEOquery)
+suppressMessages(library(GEOquery))
 
-meta <- lapply(c(sample_locations, sample(1:length(samples), 100)), function(x) Meta(getGEO(samples[x]))[c("geo_accession","characteristics_ch1", "source_name_ch1")])
+## meta <- lapply(c(sample_locations, sample(1:length(samples), 100)), function(x) Meta(getGEO(samples[x]))[c("geo_accession","characteristics_ch1", "source_name_ch1")])
+
+meta <- lapply(sample_locations[1], function(x) Meta(getGEO(samples[x])))
+
 
 # write unstructured metadata to file
 sink("metadata.txt")
